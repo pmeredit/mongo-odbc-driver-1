@@ -299,10 +299,10 @@ fn invalid_alloc() {
 
 fn validate_diag_rec(handle_type: HandleType, handle: Handle) {
     // Initialize buffers
-    let sql_state = [0u16; 6].as_mut_ptr();
-    let message_text = [0u16; 22].as_mut_ptr();
-    let text_length_ptr = Box::into_raw(Box::new(0));
-    let native_err_ptr = Box::into_raw(Box::new(0));
+    let sql_state_ptr = &mut [0u16; 6] as *mut _;
+    let message_text_ptr = &mut [0u16; 22] as *mut _;
+    let text_length_ptr = &mut 0;
+    let native_err_ptr = &mut 0;
 
     assert_eq!(
         Ok(()),
@@ -315,29 +315,28 @@ fn validate_diag_rec(handle_type: HandleType, handle: Handle) {
             "api".to_string()
         )
     );
+
     assert_eq!(
         SqlReturn::SUCCESS,
         SQLGetDiagRecW(
             handle_type,
-            handle,
+            handle as *mut _,
             1,
-            sql_state,
+            sql_state_ptr,
             native_err_ptr,
-            message_text,
+            message_text_ptr,
             50,
             text_length_ptr,
         )
     );
     assert_eq!(UNIMPLEMENTED_FUNC_NULL, unsafe {
-        String::from_utf16(&*(sql_state as *const [u16; 6])).unwrap()
+        String::from_utf16(&*(sql_state_ptr as *const [u16; 6])).unwrap()
     });
     assert_eq!(ERROR_MESSAGE_NULL, unsafe {
-        String::from_utf16(&*(message_text as *const [u16; 22])).unwrap()
+        String::from_utf16(&*(message_text_ptr as *const [u16; 22])).unwrap()
     });
-    unsafe {
-        assert_eq!(22, *text_length_ptr);
-        assert_eq!(3, *native_err_ptr);
-    }
+    assert_eq!(22, *text_length_ptr);
+    assert_eq!(3, *native_err_ptr);
 }
 
 #[test]
@@ -368,10 +367,10 @@ fn diag_rec_error_message() {
         &mut MongoHandle::Env(RwLock::new(Env::with_state(EnvState::Allocated)));
 
     // Initialize buffers
-    let sql_state = [0u16; 6].as_mut_ptr();
-    let message_text = [0u16; 23].as_mut_ptr();
-    let text_length_ptr = Box::into_raw(Box::new(0));
-    let native_err_ptr = Box::into_raw(Box::new(0));
+    let sql_state_ptr = &mut [0u16; 6] as *mut _;
+    let message_text_ptr = &mut [0u16; 23] as *mut _;
+    let text_length_ptr = &mut 0;
+    let native_err_ptr = &mut 0;
 
     assert_eq!(
         Ok(()),
@@ -384,23 +383,24 @@ fn diag_rec_error_message() {
             "api".to_string()
         )
     );
-    // Buffer is too small to hold the entire error message (0 < length < 22)
+
+    //Buffer is too small to hold the entire error message (0 < length < 22)
     assert_eq!(
         SqlReturn::SUCCESS_WITH_INFO,
         SQLGetDiagRecW(
             HandleType::Env,
             env_handle as *mut _,
             1,
-            sql_state,
+            sql_state_ptr,
             native_err_ptr,
-            message_text,
+            message_text_ptr,
             15,
             text_length_ptr
         )
     );
     assert_eq!(
         "func is unimpl\0",
-        String::from_utf16(unsafe { &*(message_text as *const [u16; 15]) }).unwrap()
+        String::from_utf16(unsafe { &*(message_text_ptr as *const [u16; 15]) }).unwrap()
     );
     // Error message string where some characters are composed of more than one byte.
     // 1 < RecNumber =< number of diagnostic records.
@@ -421,16 +421,16 @@ fn diag_rec_error_message() {
             HandleType::Env,
             env_handle as *mut _,
             2,
-            sql_state,
+            sql_state_ptr,
             native_err_ptr,
-            message_text,
+            message_text_ptr,
             23,
             text_length_ptr
         )
     );
     assert_eq!(
         "✐ 𑜲 is a funky string\0",
-        String::from_utf16(unsafe { &*(message_text as *const [u16; 23]) }).unwrap()
+        String::from_utf16(unsafe { &*(message_text_ptr as *const [u16; 23]) }).unwrap()
     );
 }
 
@@ -440,10 +440,10 @@ fn invalid_get_diag_rec() {
         &mut MongoHandle::Env(RwLock::new(Env::with_state(EnvState::Allocated)));
 
     // Initialize buffers
-    let sql_state = Box::new([0u16; 6]).as_mut_ptr();
-    let message_text = Box::new([0u16; 22]).as_mut_ptr();
-    let text_length_ptr = Box::into_raw(Box::new(0));
-    let native_err_ptr = Box::into_raw(Box::new(0));
+    let sql_state_ptr = &mut [0u16; 6] as *mut _;
+    let message_text_ptr = &mut [0u16; 22] as *mut _;
+    let text_length_ptr = &mut 0;
+    let native_err_ptr = &mut 0;
 
     assert_eq!(
         Ok(()),
@@ -463,9 +463,9 @@ fn invalid_get_diag_rec() {
             HandleType::Env,
             env_handle as *mut _,
             1,
-            sql_state,
+            sql_state_ptr,
             native_err_ptr,
-            message_text,
+            message_text_ptr,
             -1,
             text_length_ptr
         )
@@ -477,9 +477,9 @@ fn invalid_get_diag_rec() {
             HandleType::Env,
             env_handle as *mut _,
             0,
-            sql_state,
+            sql_state_ptr,
             native_err_ptr,
-            message_text,
+            message_text_ptr,
             22,
             text_length_ptr
         )
@@ -491,9 +491,9 @@ fn invalid_get_diag_rec() {
             HandleType::Env,
             env_handle as *mut _,
             3,
-            sql_state,
+            sql_state_ptr,
             native_err_ptr,
-            message_text,
+            message_text_ptr,
             22,
             text_length_ptr
         )
