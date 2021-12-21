@@ -68,7 +68,6 @@ pub fn set_error_message(
         let mut msg_u16 = error_message.encode_utf16().collect::<Vec<u16>>();
         let message_len = msg_u16.len();
         let num_chars = min(msg_u16.len() + 1, buffer_len);
-        //let mut msg = msg_u16[..num_chars - 1].to_vec();
         msg_u16.resize(num_chars - 1, 0);
         msg_u16.push('\u{0}' as u16);
         copy_nonoverlapping(msg_u16.as_ptr(), output_ptr, num_chars);
