@@ -3,4 +3,12 @@
 members = [
   "odbc",
   "core",
+  "odbc-api",
+  "odbcsv",
 ]
+
+[profile.release]
+# Panics should only be caused by logic errors and are considered bugs
+panic = 'abort'
+# Link time Optimization
+lto = true

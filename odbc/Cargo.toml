@@ -20,7 +20,8 @@ features = ["sync"]
 
 
 [dev-dependencies]
-odbc-api = "0.45.1"
+#odbc-api = "0.45.1"
+odbc-api = { path = "../odbc-api" }
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.8.21"
 thiserror = "1"
