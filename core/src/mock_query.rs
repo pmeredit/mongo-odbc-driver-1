@@ -1,14 +1,5 @@
-use crate::{
-    col_metadata::{ColumnNullability, MongoColMetadata},
-    conn::MongoConnection,
-    err::Result,
-    json_schema::{self, simplified::ObjectSchema, BsonTypeName},
-    stmt::MongoStatement,
-    Error,
-};
-use bson::{doc, Bson, Document};
-use itertools::Itertools;
-use serde::{Deserialize, Serialize};
+use crate::{col_metadata::MongoColMetadata, err::Result, stmt::MongoStatement, Error};
+use bson::{Bson, Document};
 
 #[derive(Debug)]
 pub struct MongoQuery {
@@ -17,7 +8,7 @@ pub struct MongoQuery {
     // The result set metadata, sorted alphabetically by collection and field name.
     resultset_metadata: Vec<MongoColMetadata>,
     // The current index in the resultset.
-    current: usize,
+    current: Option<usize>,
 }
 
 impl MongoQuery {
@@ -25,7 +16,7 @@ impl MongoQuery {
         MongoQuery {
             resultset,
             resultset_metadata,
-            current: 0,
+            current: None,
         }
     }
 }
@@ -34,8 +25,13 @@ impl MongoStatement for MongoQuery {
     // Move the current index to the next Document in the Vec.
     // Return true if moving was successful, false otherwise.
     fn next(&mut self) -> Result<bool> {
-        self.current += 1;
-        if self.current < self.resultset.len() {
+        if let Some(current) = self.current {
+            self.current = Some(current + 1);
+        } else {
+            self.current = Some(0);
+        }
+        let current = self.current.unwrap();
+        if current < self.resultset.len() {
             return Ok(true);
         }
         Ok(false)
@@ -45,7 +41,7 @@ impl MongoStatement for MongoQuery {
     // Fails if the first row as not been retrieved (next must be called at least once before getValue).
     fn get_value(&self, col_index: u16) -> Result<Option<Bson>> {
         let md = self.get_col_metadata(col_index)?;
-        let datasource = self.resultset[self.current]
+        let datasource = self.resultset[self.current.ok_or_else(|| Error::InvalidCursorState)?]
             .get_document(&md.table_name)
             .map_err(Error::ValueAccess)?;
         let column = datasource.get(&md.col_name);
