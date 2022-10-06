@@ -16,5 +16,7 @@ mod json_schema;
 pub use col_metadata::{ColumnNullability, MongoColMetadata};
 mod query;
 pub use query::MongoQuery;
+mod mock_query;
+pub use mock_query::MongoQuery;
 mod stmt;
 pub use stmt::MongoStatement;

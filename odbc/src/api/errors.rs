@@ -1,12 +1,14 @@
 use constants::{
-    INVALID_ATTR_VALUE, INVALID_DESCRIPTOR_INDEX, NOT_IMPLEMENTED, NO_DSN_OR_DRIVER,
-    OPTION_CHANGED, RIGHT_TRUNCATED, UNABLE_TO_CONNECT, UNSUPPORTED_FIELD_DESCRIPTOR,
-    VENDOR_IDENTIFIER,
+    INVALID_ATTR_VALUE, INVALID_CURSOR_STATE, INVALID_DESCRIPTOR_INDEX, NOT_IMPLEMENTED,
+    NO_DSN_OR_DRIVER, OPTION_CHANGED, RIGHT_TRUNCATED, UNABLE_TO_CONNECT,
+    UNSUPPORTED_FIELD_DESCRIPTOR, VENDOR_IDENTIFIER,
 };
 use thiserror::Error;
 
 #[derive(Debug, Error, Clone)]
 pub enum ODBCError {
+    #[error("This is a placeholder error that should never escape to users")]
+    None,
     #[error("[{}][API] The feature {0} is not implemented", VENDOR_IDENTIFIER)]
     Unimplemented(&'static str),
     #[error(
@@ -21,6 +23,8 @@ pub enum ODBCError {
     UnsupportedFieldDescriptor(String),
     #[error("[{}][API] The field index {0} is out of bounds", VENDOR_IDENTIFIER)]
     InvalidDescriptorIndex(u16),
+    #[error("[{}][API] No ResultSet", VENDOR_IDENTIFIER)]
+    InvalidCursorState,
     #[error("[{}][API] Invalid Uri: {0}", VENDOR_IDENTIFIER)]
     InvalidUriFormat(String),
     #[error("[{}][API] Invalid handle type, expected {0}", VENDOR_IDENTIFIER)]
@@ -57,12 +61,14 @@ impl ODBCError {
             ODBCError::Core(c) => c.get_sql_state(),
             ODBCError::InvalidUriFormat(_) => UNABLE_TO_CONNECT,
             ODBCError::InvalidAttrValue(_) => INVALID_ATTR_VALUE,
+            ODBCError::InvalidCursorState => INVALID_CURSOR_STATE,
             ODBCError::InvalidHandleType(_) => NOT_IMPLEMENTED,
             ODBCError::OptionValueChanged(_, _) => OPTION_CHANGED,
             ODBCError::OutStringTruncated(_) => RIGHT_TRUNCATED,
             ODBCError::MissingDriverOrDSNProperty => NO_DSN_OR_DRIVER,
             ODBCError::UnsupportedFieldDescriptor(_) => UNSUPPORTED_FIELD_DESCRIPTOR,
             ODBCError::InvalidDescriptorIndex(_) => INVALID_DESCRIPTOR_INDEX,
+            ODBCError::None => panic!("internal placeholder error should not escape to users"),
         }
     }
 
@@ -74,6 +80,7 @@ impl ODBCError {
             ODBCError::Unimplemented(_)
             | ODBCError::InvalidUriFormat(_)
             | ODBCError::InvalidAttrValue(_)
+            | ODBCError::InvalidCursorState
             | ODBCError::InvalidHandleType(_)
             | ODBCError::MissingDriverOrDSNProperty
             | ODBCError::OutStringTruncated(_)
@@ -82,6 +89,7 @@ impl ODBCError {
             | ODBCError::InvalidDescriptorIndex(_)
             | ODBCError::UnsupportedFieldDescriptor(_) => 0,
             ODBCError::Core(me) => me.code(),
+            ODBCError::None => panic!("interal placeholder error should not escape to users"),
         }
     }
 }

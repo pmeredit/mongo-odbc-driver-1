@@ -936,8 +936,36 @@ pub unsafe extern "C" fn SQLExecute(statement_handle: HStmt) -> SqlReturn {
 /// Because this is a C-infereface, this is necessarily unsafe
 ///
 #[no_mangle]
-pub unsafe extern "C" fn SQLFetch(_statement_handle: HStmt) -> SqlReturn {
-    unimplemented!()
+pub unsafe extern "C" fn SQLFetch(statement_handle: HStmt) -> SqlReturn {
+    let mut error = ODBCError::None;
+    let mongo_handle = MongoHandleRef::from(statement_handle);
+    // This scope is introduced to make the RWLock Guard expire before we write
+    // any error values via add_diag_info as RWLock::write is not reentrant on
+    // all operating systems, and the docs say it can panic.
+    {
+        let stmt = must_be_valid!((*mongo_handle).as_statement());
+        let mut guard = stmt.write().unwrap();
+        let mongo_stmt = guard.mongo_statement.as_mut();
+        match mongo_stmt {
+            None => error = ODBCError::InvalidCursorState,
+            Some(mongo_stmt) => {
+                let res = mongo_stmt.next();
+                match res {
+                    Err(e) => error = e.into(),
+                    Ok(b) => {
+                        if !b {
+                            return SqlReturn::NO_DATA;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if !matches!(error, ODBCError::None) {
+        mongo_handle.add_diag_info(error.into());
+        return SqlReturn::ERROR;
+    }
+    SqlReturn::SUCCESS
 }
 
 ///
@@ -1659,7 +1687,9 @@ pub unsafe extern "C" fn SQLGetTypeInfo(_handle: HStmt, _data_type: SqlDataType)
 ///
 #[no_mangle]
 pub unsafe extern "C" fn SQLMoreResults(_handle: HStmt) -> SqlReturn {
-    unimplemented!()
+    // For now, we never allow more than one result from a query (i.e., we only support one query
+    // at a time).
+    SqlReturn::NO_DATA
 }
 
 ///
