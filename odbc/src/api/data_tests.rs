@@ -15,6 +15,8 @@ use odbc_sys::SqlReturn;
 use std::sync::RwLock;
 
 mod unit {
+    use odbc_sys::SQLMoreResults;
+
     use super::*;
     // test unallocated_statement tests SQLFetch when the mongo_statement inside
     // of the statement handle has not been allocated (before an execute or tables function
@@ -44,7 +46,7 @@ mod unit {
     }
 
     #[test]
-    fn sql_fetch_basic_functionality() {
+    fn sql_fetch_and_more_results_basic_functionality() {
         let mut stmt = Statement::with_state(std::ptr::null_mut(), StatementState::Allocated);
         stmt.mongo_statement = Some(Box::new(MongoQuery::new(
             vec![
@@ -66,6 +68,7 @@ mod unit {
             assert_eq!(SqlReturn::SUCCESS, SQLFetch(stmt_handle as *mut _,));
             assert_eq!(SqlReturn::SUCCESS, SQLFetch(stmt_handle as *mut _,));
             assert_eq!(SqlReturn::NO_DATA, SQLFetch(stmt_handle as *mut _,));
+            assert_eq!(SqlReturn::NO_DATA, SQLMoreResults(stmt_handle as *mut _,));
         }
     }
 }
