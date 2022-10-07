@@ -1,7 +1,7 @@
 use crate::{
     api::{
         data::{
-            get_diag_rec, input_wtext_to_string, set_output_string, set_str_length,
+            get_diag_rec, input_wtext_to_string, set_output_wstring, set_str_length,
             unsupported_function,
         },
         definitions::*,
@@ -322,7 +322,7 @@ pub unsafe extern "C" fn SQLColAttributeW(
         {
             let stmt_contents = stmt.read().unwrap();
             if stmt_contents.mongo_statement.is_none() {
-                return set_output_string(
+                return set_output_wstring(
                     "",
                     character_attribute_ptr as *mut WChar,
                     buffer_length as usize,
@@ -335,7 +335,7 @@ pub unsafe extern "C" fn SQLColAttributeW(
                 .unwrap()
                 .get_col_metadata(column_number);
             if let Ok(col_metadata) = col_metadata {
-                return set_output_string(
+                return set_output_wstring(
                     (*f)(col_metadata),
                     character_attribute_ptr as *mut WChar,
                     buffer_length as usize,
@@ -820,7 +820,7 @@ pub unsafe extern "C" fn SQLDriverConnectW(
     let mongo_connection = odbc_unwrap!(sql_driver_connect(conn, &odbc_uri_string), conn_handle);
     conn.write().unwrap().mongo_connection = Some(mongo_connection);
     let buffer_len = usize::try_from(buffer_length).unwrap();
-    let sql_return = set_output_string(
+    let sql_return = set_output_wstring(
         &odbc_uri_string,
         out_connection_string,
         buffer_len,
@@ -1225,22 +1225,19 @@ pub unsafe extern "C" fn SQLGetData(
                 }
             }
         }
-    };
+    }
     if !matches!(error, ODBCError::None) {
         mongo_handle.add_diag_info(error);
         return SqlReturn::ERROR;
     }
-    odbc_unwrap!(
-        crate::api::data::format_and_return_bson(
-            target_type,
-            target_value_ptr,
-            buffer_length,
-            str_len_or_ind_ptr,
-            ret,
-        ),
-        mongo_handle
-    );
-    SqlReturn::SUCCESS
+    crate::api::data::format_and_return_bson(
+        mongo_handle,
+        target_type,
+        target_value_ptr,
+        buffer_length,
+        str_len_or_ind_ptr,
+        ret,
+    )
 }
 
 ///

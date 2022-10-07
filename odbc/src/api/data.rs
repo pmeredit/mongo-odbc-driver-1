@@ -5,16 +5,17 @@ use chrono::{
     DateTime, Datelike, Timelike,
 };
 use odbc_sys::{CDataType, Date, Len, Pointer, Time, Timestamp, NULL_DATA};
-use odbc_sys::{Integer, SmallInt, SqlReturn, WChar};
+use odbc_sys::{Char, Integer, SmallInt, SqlReturn, WChar};
 use std::{cmp::min, mem::size_of, ptr::copy_nonoverlapping, str::FromStr};
 
 pub unsafe fn format_and_return_bson(
+    mongo_handle: &mut MongoHandle,
     target_type: CDataType,
     target_value_ptr: Pointer,
-    buffer_length: Len,
+    buffer_len: Len,
     str_len_or_ind_ptr: *mut Len,
     data: Bson,
-) -> Result<(), ODBCError> {
+) -> SqlReturn {
     match data {
         // handle all NULL values:
         Bson::Array(_)
@@ -30,49 +31,54 @@ pub unsafe fn format_and_return_bson(
         | Bson::MinKey
         | Bson::DbPointer(_) => {
             *str_len_or_ind_ptr = NULL_DATA;
+            SqlReturn::SUCCESS_WITH_INFO
         }
         _ => match target_type {
-            CDataType::Char | CDataType::Binary => {
-                let s = to_string(data);
-                let l = min(buffer_length as usize, s.len());
-                copy_nonoverlapping(s.as_ptr(), target_value_ptr as *mut _, l);
-                *str_len_or_ind_ptr = l as Len;
-            }
-            CDataType::WChar => {
-                let s = to_string(data);
-                let data: Vec<u16> = s.encode_utf16().collect();
-                let l = min(buffer_length as usize, data.len());
-                copy_nonoverlapping(data.as_ptr(), target_value_ptr as *mut _, l);
-                *str_len_or_ind_ptr = (l * 2) as Len;
-            }
-            CDataType::Bit => {
-                let b = to_bool(data);
-                copy_nonoverlapping(&b as *const _, target_value_ptr as *mut _, 1);
-                *str_len_or_ind_ptr = size_of::<bool>() as isize;
-            }
-            CDataType::Double => {
-                let d = to_f64(data);
-                copy_nonoverlapping(&d as *const _, target_value_ptr as *mut _, 1);
-                *str_len_or_ind_ptr = size_of::<f64>() as isize;
-            }
-            CDataType::Float => {
-                let d = to_f32(data);
-                copy_nonoverlapping(&d as *const _, target_value_ptr as *mut _, 1);
-                *str_len_or_ind_ptr = size_of::<f32>() as isize;
-            }
-            CDataType::SBigInt | CDataType::Numeric => {
-                let d = to_i64(data);
-                copy_nonoverlapping(&d as *const _, target_value_ptr as *mut _, 1);
-                *str_len_or_ind_ptr = size_of::<isize>() as isize;
-            }
-            CDataType::SLong => {
-                let d = to_i32(data);
-                copy_nonoverlapping(&d as *const _, target_value_ptr as *mut _, 1);
-                *str_len_or_ind_ptr = size_of::<i32>() as isize;
-            }
+            CDataType::Char | CDataType::Binary => set_output_string(
+                to_string(data).as_ref(),
+                target_value_ptr as *mut _,
+                buffer_len as usize,
+                str_len_or_ind_ptr as *mut _,
+            ),
+            CDataType::WChar => set_output_wstring(
+                to_string(data).as_ref(),
+                target_value_ptr as *mut _,
+                buffer_len as usize,
+                str_len_or_ind_ptr as *mut _,
+            ),
+            CDataType::Bit => set_output_fixed_data(
+                &to_bool(data),
+                target_value_ptr,
+                buffer_len,
+                str_len_or_ind_ptr,
+            ),
+            CDataType::Double => set_output_fixed_data(
+                &to_f64(data),
+                target_value_ptr,
+                buffer_len,
+                str_len_or_ind_ptr,
+            ),
+            CDataType::Float => set_output_fixed_data(
+                &to_f32(data),
+                target_value_ptr,
+                buffer_len,
+                str_len_or_ind_ptr,
+            ),
+            CDataType::SBigInt | CDataType::Numeric => set_output_fixed_data(
+                &to_i64(data),
+                target_value_ptr,
+                buffer_len,
+                str_len_or_ind_ptr,
+            ),
+            CDataType::SLong => set_output_fixed_data(
+                &to_i32(data),
+                target_value_ptr,
+                buffer_len,
+                str_len_or_ind_ptr,
+            ),
             CDataType::TimeStamp | CDataType::TypeTimestamp => {
                 let dt = to_date(data);
-                let out = Timestamp {
+                let data = Timestamp {
                     year: dt.year() as i16,
                     month: dt.month() as u16,
                     day: dt.day() as u16,
@@ -81,35 +87,32 @@ pub unsafe fn format_and_return_bson(
                     second: dt.second() as u16,
                     fraction: (dt.nanosecond() as f32 * 0.000001) as u32,
                 };
-                copy_nonoverlapping(&out as *const _, target_value_ptr as *mut _, 1);
-                *str_len_or_ind_ptr = size_of::<Timestamp>() as isize;
+                set_output_fixed_data(&data, target_value_ptr, buffer_len, str_len_or_ind_ptr)
             }
             CDataType::Time | CDataType::TypeTime => {
                 let dt = to_date(data);
-                let out = Time {
+                let data = Time {
                     hour: dt.hour() as u16,
                     minute: dt.minute() as u16,
                     second: dt.second() as u16,
                 };
-                copy_nonoverlapping(&out as *const _, target_value_ptr as *mut _, 1);
-                *str_len_or_ind_ptr = size_of::<Time>() as isize;
+                set_output_fixed_data(&data, target_value_ptr, buffer_len, str_len_or_ind_ptr)
             }
             CDataType::Date | CDataType::TypeDate => {
                 let dt = to_date(data);
-                let out = Date {
+                let data = Date {
                     year: dt.year() as i16,
                     month: dt.month() as u16,
                     day: dt.day() as u16,
                 };
-                copy_nonoverlapping(&out as *const _, target_value_ptr as *mut _, 1);
-                *str_len_or_ind_ptr = size_of::<Date>() as isize;
+                set_output_fixed_data(&data, target_value_ptr, buffer_len, str_len_or_ind_ptr)
             }
             _ => {
-                return Err(ODBCError::Unimplemented("unimplemented data type"));
+                mongo_handle.add_diag_info(ODBCError::Unimplemented("unimplemented data type"));
+                SqlReturn::ERROR
             }
         },
-    };
-    Ok(())
+    }
 }
 
 fn to_string(b: Bson) -> String {
@@ -264,7 +267,7 @@ pub unsafe fn set_sql_state(sql_state: &str, output_ptr: *mut WChar) {
 }
 
 ///
-/// set_output_string writes [`message`] to the [`output_ptr`]. [`buffer_len`] is the
+/// set_output_wstring writes [`message`] to the *WChar [`output_ptr`]. [`buffer_len`] is the
 /// length of the [`output_ptr`] buffer in characters; the message should be truncated
 /// if it is longer than the buffer length. The number of characters written to [`output_ptr`]
 /// should be stored in [`text_length_ptr`].
@@ -272,7 +275,7 @@ pub unsafe fn set_sql_state(sql_state: &str, output_ptr: *mut WChar) {
 /// # Safety
 /// This writes to multiple raw C-pointers
 ///
-pub unsafe fn set_output_string(
+pub unsafe fn set_output_wstring(
     message: &str,
     output_ptr: *mut WChar,
     buffer_len: usize,
@@ -299,6 +302,83 @@ pub unsafe fn set_output_string(
     message_u16.resize(num_chars - 1, 0);
     message_u16.push('\u{0}' as u16);
     copy_nonoverlapping(message_u16.as_ptr(), output_ptr, num_chars);
+    // Store the number of characters in the message string, excluding the
+    // null terminator, in text_length_ptr
+    if !text_length_ptr.is_null() {
+        *text_length_ptr = (num_chars - 1) as SmallInt;
+    }
+    if num_chars < message_len {
+        SqlReturn::SUCCESS_WITH_INFO
+    } else {
+        SqlReturn::SUCCESS
+    }
+}
+
+///
+/// set_output_fixed_data writes [`data`], which must be a fixed sized type, to the Pointer [`output_ptr`]. [`buffer_len`] is the
+/// length of the [`output_ptr`] buffer in bytes; the message should be truncated
+/// if it is longer than the buffer length. The number of characters written to [`output_ptr`]
+/// should be stored in [`text_length_ptr`].
+///
+/// # Safety
+/// This writes to multiple raw C-pointers
+///
+pub unsafe fn set_output_fixed_data<T>(
+    data: &T,
+    output_ptr: Pointer,
+    buffer_len: Len,
+    data_len_ptr: *mut Len,
+) -> SqlReturn {
+    if output_ptr.is_null() {
+        if !data_len_ptr.is_null() {
+            *data_len_ptr = 0 as Len;
+        } else {
+            // If the output_ptr is NULL, we should still return the length of the message.
+            *data_len_ptr = size_of::<T>() as isize;
+        }
+        return SqlReturn::SUCCESS_WITH_INFO;
+    }
+    copy_nonoverlapping(data as *const _, output_ptr as *mut _, 1);
+    SqlReturn::SUCCESS
+}
+
+///
+/// set_output_wstring writes [`message`] to the *Char [`output_ptr`]. [`buffer_len`] is the
+/// length of the [`output_ptr`] buffer in characters; the message should be truncated
+/// if it is longer than the buffer length. The number of characters written to [`output_ptr`]
+/// should be stored in [`text_length_ptr`].
+///
+/// # Safety
+/// This writes to multiple raw C-pointers
+///
+pub unsafe fn set_output_string(
+    message: &str,
+    output_ptr: *mut Char,
+    buffer_len: usize,
+    text_length_ptr: *mut SmallInt,
+) -> SqlReturn {
+    if output_ptr.is_null() {
+        if !text_length_ptr.is_null() {
+            *text_length_ptr = 0 as SmallInt;
+        } else {
+            // If the output_ptr is NULL, we should still return the length of the message.
+            *text_length_ptr = message.len() as i16;
+        }
+        return SqlReturn::SUCCESS_WITH_INFO;
+    }
+    // Check if the entire message plus a null terminator can fit in the buffer;
+    // we should truncate the message if it's too long.
+    // Note, we also assume this is valid ascii
+    let mut message_u8 = message.bytes().collect::<Vec<u8>>();
+    let message_len = message_u8.len();
+    let num_chars = min(message_len + 1, buffer_len);
+    // It is possible that no buffer space has been allocated.
+    if num_chars == 0 {
+        return SqlReturn::SUCCESS_WITH_INFO;
+    }
+    message_u8.resize(num_chars - 1, 0);
+    message_u8.push('\u{0}' as u8);
+    copy_nonoverlapping(message_u8.as_ptr(), output_ptr, num_chars);
     // Store the number of characters in the message string, excluding the
     // null terminator, in text_length_ptr
     if !text_length_ptr.is_null() {
