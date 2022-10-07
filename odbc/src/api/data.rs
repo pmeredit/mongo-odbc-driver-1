@@ -47,35 +47,27 @@ pub unsafe fn format_and_return_bson(
             }
             CDataType::Bit => {
                 let b = to_bool(data);
-                copy_nonoverlapping(
-                    &b as *const _,
-                    target_value_ptr as *mut _,
-                    size_of::<bool>(),
-                );
+                copy_nonoverlapping(&b as *const _, target_value_ptr as *mut _, 1);
                 *str_len_or_ind_ptr = size_of::<bool>() as isize;
             }
             CDataType::Double => {
                 let d = to_f64(data);
-                copy_nonoverlapping(&d as *const _, target_value_ptr as *mut _, size_of::<f64>());
+                copy_nonoverlapping(&d as *const _, target_value_ptr as *mut _, 1);
                 *str_len_or_ind_ptr = size_of::<f64>() as isize;
             }
             CDataType::Float => {
                 let d = to_f32(data);
-                copy_nonoverlapping(&d as *const _, target_value_ptr as *mut _, size_of::<f32>());
+                copy_nonoverlapping(&d as *const _, target_value_ptr as *mut _, 1);
                 *str_len_or_ind_ptr = size_of::<f32>() as isize;
             }
             CDataType::SBigInt | CDataType::Numeric => {
                 let d = to_i64(data);
-                copy_nonoverlapping(
-                    &d as *const _,
-                    target_value_ptr as *mut _,
-                    size_of::<isize>(),
-                );
+                copy_nonoverlapping(&d as *const _, target_value_ptr as *mut _, 1);
                 *str_len_or_ind_ptr = size_of::<isize>() as isize;
             }
             CDataType::SLong => {
                 let d = to_i32(data);
-                copy_nonoverlapping(&d as *const _, target_value_ptr as *mut _, size_of::<i32>());
+                copy_nonoverlapping(&d as *const _, target_value_ptr as *mut _, 1);
                 *str_len_or_ind_ptr = size_of::<i32>() as isize;
             }
             CDataType::TimeStamp | CDataType::TypeTimestamp => {
@@ -89,11 +81,7 @@ pub unsafe fn format_and_return_bson(
                     second: dt.second() as u16,
                     fraction: (dt.nanosecond() as f32 * 0.000001) as u32,
                 };
-                copy_nonoverlapping(
-                    &out as *const _,
-                    target_value_ptr as *mut _,
-                    size_of::<Timestamp>(),
-                );
+                copy_nonoverlapping(&out as *const _, target_value_ptr as *mut _, 1);
                 *str_len_or_ind_ptr = size_of::<Timestamp>() as isize;
             }
             CDataType::Time | CDataType::TypeTime => {
@@ -103,11 +91,7 @@ pub unsafe fn format_and_return_bson(
                     minute: dt.minute() as u16,
                     second: dt.second() as u16,
                 };
-                copy_nonoverlapping(
-                    &out as *const _,
-                    target_value_ptr as *mut _,
-                    size_of::<Time>(),
-                );
+                copy_nonoverlapping(&out as *const _, target_value_ptr as *mut _, 1);
                 *str_len_or_ind_ptr = size_of::<Time>() as isize;
             }
             CDataType::Date | CDataType::TypeDate => {
@@ -117,11 +101,7 @@ pub unsafe fn format_and_return_bson(
                     month: dt.month() as u16,
                     day: dt.day() as u16,
                 };
-                copy_nonoverlapping(
-                    &out as *const _,
-                    target_value_ptr as *mut _,
-                    size_of::<Date>(),
-                );
+                copy_nonoverlapping(&out as *const _, target_value_ptr as *mut _, 1);
                 *str_len_or_ind_ptr = size_of::<Date>() as isize;
             }
             _ => {
@@ -155,7 +135,7 @@ fn to_f64(b: Bson) -> f64 {
         Bson::Int32(i) => i as f64,
         Bson::Int64(i) => i as f64,
         // TODO: Fixme when Decimal128 works.
-        Bson::Decimal128(d) => 0.0,
+        Bson::Decimal128(_d) => 0.0,
         _ => 0.0,
     }
 }
@@ -175,7 +155,7 @@ fn to_f32(b: Bson) -> f32 {
         Bson::Int32(i) => i as f32,
         Bson::Int64(i) => i as f32,
         // TODO: Fixme when Decimal128 works.
-        Bson::Decimal128(d) => 0.0,
+        Bson::Decimal128(_d) => 0.0,
         _ => 0.0,
     }
 }
@@ -195,7 +175,7 @@ fn to_i64(b: Bson) -> i64 {
         Bson::Int32(i) => i as i64,
         Bson::Int64(i) => i,
         // TODO: Fixme when Decimal128 works.
-        Bson::Decimal128(d) => 0,
+        Bson::Decimal128(_d) => 0,
         _ => 0,
     }
 }
@@ -215,7 +195,7 @@ fn to_i32(b: Bson) -> i32 {
         Bson::Int32(i) => i,
         Bson::Int64(i) => i as i32,
         // TODO: Fixme when Decimal128 works.
-        Bson::Decimal128(d) => 0,
+        Bson::Decimal128(_d) => 0,
         _ => 0,
     }
 }
@@ -228,7 +208,7 @@ fn to_bool(b: Bson) -> bool {
         Bson::Int32(i) => i != 0,
         Bson::Int64(i) => i != 0,
         // TODO: Fixme when Decimal128 works.
-        Bson::Decimal128(d) => false,
+        Bson::Decimal128(_d) => false,
         _ => false,
     }
 }

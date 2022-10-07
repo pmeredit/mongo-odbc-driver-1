@@ -965,7 +965,7 @@ pub unsafe extern "C" fn SQLFetch(statement_handle: HStmt) -> SqlReturn {
         }
     }
     if !matches!(error, ODBCError::None) {
-        mongo_handle.add_diag_info(error.into());
+        mongo_handle.add_diag_info(error);
         return SqlReturn::ERROR;
     }
     SqlReturn::SUCCESS
@@ -1227,7 +1227,7 @@ pub unsafe extern "C" fn SQLGetData(
         }
     };
     if !matches!(error, ODBCError::None) {
-        mongo_handle.add_diag_info(error.into());
+        mongo_handle.add_diag_info(error);
         return SqlReturn::ERROR;
     }
     odbc_unwrap!(
