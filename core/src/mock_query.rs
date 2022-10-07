@@ -41,7 +41,7 @@ impl MongoStatement for MongoQuery {
     // Fails if the first row as not been retrieved (next must be called at least once before getValue).
     fn get_value(&self, col_index: u16) -> Result<Option<Bson>> {
         let md = self.get_col_metadata(col_index)?;
-        let datasource = self.resultset[self.current.ok_or_else(|| Error::InvalidCursorState)?]
+        let datasource = self.resultset[self.current.ok_or(Error::InvalidCursorState)?]
             .get_document(&md.table_name)
             .map_err(Error::ValueAccess)?;
         let column = datasource.get(&md.col_name);
