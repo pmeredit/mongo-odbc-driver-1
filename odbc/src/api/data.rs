@@ -4,9 +4,147 @@ use chrono::{
     offset::{TimeZone, Utc},
     DateTime, Datelike, Timelike,
 };
-use odbc_sys::{CDataType, Date, Len, Pointer, Time, Timestamp, NULL_DATA};
+use odbc_sys::{CDataType, Date, Len, Pointer, Time, Timestamp};
 use odbc_sys::{Char, Integer, SmallInt, SqlReturn, WChar};
 use std::{cmp::min, mem::size_of, ptr::copy_nonoverlapping, str::FromStr};
+
+const NULL: &'static str = "NULL";
+
+/// ToCData is just used for adding methods to bson::Bson.
+trait ToCData {
+    fn to_string(self) -> String;
+    fn to_f64(self) -> f64;
+    fn to_f32(self) -> f32;
+    fn to_i64(self) -> i64;
+    fn to_i32(self) -> i32;
+    fn to_bool(self) -> bool;
+    fn to_date(self) -> DateTime<Utc>;
+}
+
+impl ToCData for Bson {
+    fn to_string(self) -> String {
+        match self {
+            Bson::Null => NULL.to_string(),
+            Bson::Undefined => NULL.to_string(),
+            Bson::String(s) => s,
+            Bson::Decimal128(d) => ODBCDecimal128::new(d.bytes()).to_string(),
+            Bson::Array()
+            | Bson::Binary(_)
+            | Bson::DateTime(_)
+            | Bson::DbPointer(_)
+            | Bson::Document(_)
+            | Bson::JavaScriptCode(_)
+            | Bson::JavaScriptCodeWithScope(_)
+            | Bson::MaxKey
+            | Bson::MinKey
+            | Bson::ObjectId(_)
+            | Bson::RegularExpression(_)
+            | Bson::Symbol(_)
+            | Bson::Timestamp(_) => self.into_canonical_extjson().to_string(),
+        }
+    }
+
+    fn to_f64(self) -> f64 {
+        match self {
+            Bson::DateTime(d) => d.timestamp_millis() as f64,
+            Bson::Double(f) => f,
+            Bson::String(s) => f64::from_str(&s).unwrap_or(0.0),
+            Bson::Boolean(b) => {
+                if b {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
+            Bson::Int32(i) => i as f64,
+            Bson::Int64(i) => i as f64,
+            // TODO: Fixme when Decimal128 works.
+            Bson::Decimal128(_d) => 0.0,
+            _ => 0.0,
+        }
+    }
+
+    fn to_f32(self) -> f32 {
+        match self {
+            Bson::DateTime(d) => d.timestamp_millis() as f32,
+            Bson::Double(f) => f as f32,
+            Bson::String(s) => f32::from_str(&s).unwrap_or(0.0),
+            Bson::Boolean(b) => {
+                if b {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
+            Bson::Int32(i) => i as f32,
+            Bson::Int64(i) => i as f32,
+            // TODO: Fixme when Decimal128 works.
+            Bson::Decimal128(_d) => 0.0,
+            _ => 0.0,
+        }
+    }
+
+    fn to_i64(self) -> i64 {
+        match self {
+            Bson::DateTime(d) => d.timestamp_millis(),
+            Bson::Double(f) => f as i64,
+            Bson::String(s) => i64::from_str(&s).unwrap_or(0),
+            Bson::Boolean(b) => {
+                if b {
+                    1
+                } else {
+                    0
+                }
+            }
+            Bson::Int32(i) => i as i64,
+            Bson::Int64(i) => i,
+            // TODO: Fixme when Decimal128 works.
+            Bson::Decimal128(_d) => 0,
+            _ => 0,
+        }
+    }
+
+    fn to_i32(self) -> i32 {
+        match self {
+            Bson::DateTime(d) => d.timestamp_millis() as i32,
+            Bson::Double(f) => f as i32,
+            Bson::String(s) => i32::from_str(&s).unwrap_or(0),
+            Bson::Boolean(b) => {
+                if b {
+                    1
+                } else {
+                    0
+                }
+            }
+            Bson::Int32(i) => i,
+            Bson::Int64(i) => i as i32,
+            // TODO: Fixme when Decimal128 works.
+            Bson::Decimal128(_d) => 0,
+            _ => 0,
+        }
+    }
+
+    fn to_bool(self) -> bool {
+        match self {
+            Bson::Double(f) => f != 0.0,
+            Bson::String(s) => matches!(s.as_str(), "1" | "true"),
+            Bson::Boolean(b) => b,
+            Bson::Int32(i) => i != 0,
+            Bson::Int64(i) => i != 0,
+            // TODO: Fixme when Decimal128 works.
+            Bson::Decimal128(_d) => false,
+            _ => false,
+        }
+    }
+
+    fn to_date(self) -> DateTime<Utc> {
+        match self {
+            Bson::DateTime(d) => d.into(),
+            // TODO: support strings?
+            _ => Utc.timestamp(0, 0),
+        }
+    }
+}
 
 pub unsafe fn format_and_return_bson(
     mongo_handle: &mut MongoHandle,
@@ -16,211 +154,84 @@ pub unsafe fn format_and_return_bson(
     str_len_or_ind_ptr: *mut Len,
     data: Bson,
 ) -> SqlReturn {
-    match data {
-        // handle all NULL values:
-        Bson::Array(_)
-        | Bson::Document(_)
-        | Bson::Null
-        | Bson::RegularExpression(_)
-        | Bson::JavaScriptCode(_)
-        | Bson::JavaScriptCodeWithScope(_)
-        | Bson::Timestamp(_)
-        | Bson::Symbol(_)
-        | Bson::Undefined
-        | Bson::MaxKey
-        | Bson::MinKey
-        | Bson::DbPointer(_) => {
-            *str_len_or_ind_ptr = NULL_DATA;
-            SqlReturn::SUCCESS_WITH_INFO
+    match target_type {
+        CDataType::Char | CDataType::Binary => set_output_string(
+            &data.to_string(),
+            target_value_ptr as *mut _,
+            buffer_len as usize,
+            str_len_or_ind_ptr as *mut _,
+        ),
+        CDataType::WChar => set_output_wstring(
+            &data.to_string(),
+            target_value_ptr as *mut _,
+            buffer_len as usize,
+            str_len_or_ind_ptr as *mut _,
+        ),
+        CDataType::Bit => set_output_fixed_data(
+            &data.to_bool(),
+            target_value_ptr,
+            buffer_len,
+            str_len_or_ind_ptr,
+        ),
+        CDataType::Double => set_output_fixed_data(
+            &data.to_f64(),
+            target_value_ptr,
+            buffer_len,
+            str_len_or_ind_ptr,
+        ),
+        CDataType::Float => set_output_fixed_data(
+            &data.to_f32(),
+            target_value_ptr,
+            buffer_len,
+            str_len_or_ind_ptr,
+        ),
+        CDataType::SBigInt | CDataType::Numeric => set_output_fixed_data(
+            &data.to_i64(),
+            target_value_ptr,
+            buffer_len,
+            str_len_or_ind_ptr,
+        ),
+        CDataType::SLong => set_output_fixed_data(
+            &data.to_i32(),
+            target_value_ptr,
+            buffer_len,
+            str_len_or_ind_ptr,
+        ),
+        CDataType::TimeStamp | CDataType::TypeTimestamp => {
+            let dt = data.to_date();
+            let data = Timestamp {
+                year: dt.year() as i16,
+                month: dt.month() as u16,
+                day: dt.day() as u16,
+                hour: dt.hour() as u16,
+                minute: dt.minute() as u16,
+                second: dt.second() as u16,
+                fraction: (dt.nanosecond() as f32 * 0.000001) as u32,
+            };
+            set_output_fixed_data(&data, target_value_ptr, buffer_len, str_len_or_ind_ptr)
         }
-        _ => match target_type {
-            CDataType::Char | CDataType::Binary => set_output_string(
-                to_string(data).as_ref(),
-                target_value_ptr as *mut _,
-                buffer_len as usize,
-                str_len_or_ind_ptr as *mut _,
-            ),
-            CDataType::WChar => set_output_wstring(
-                to_string(data).as_ref(),
-                target_value_ptr as *mut _,
-                buffer_len as usize,
-                str_len_or_ind_ptr as *mut _,
-            ),
-            CDataType::Bit => set_output_fixed_data(
-                &to_bool(data),
-                target_value_ptr,
-                buffer_len,
-                str_len_or_ind_ptr,
-            ),
-            CDataType::Double => set_output_fixed_data(
-                &to_f64(data),
-                target_value_ptr,
-                buffer_len,
-                str_len_or_ind_ptr,
-            ),
-            CDataType::Float => set_output_fixed_data(
-                &to_f32(data),
-                target_value_ptr,
-                buffer_len,
-                str_len_or_ind_ptr,
-            ),
-            CDataType::SBigInt | CDataType::Numeric => set_output_fixed_data(
-                &to_i64(data),
-                target_value_ptr,
-                buffer_len,
-                str_len_or_ind_ptr,
-            ),
-            CDataType::SLong => set_output_fixed_data(
-                &to_i32(data),
-                target_value_ptr,
-                buffer_len,
-                str_len_or_ind_ptr,
-            ),
-            CDataType::TimeStamp | CDataType::TypeTimestamp => {
-                let dt = to_date(data);
-                let data = Timestamp {
-                    year: dt.year() as i16,
-                    month: dt.month() as u16,
-                    day: dt.day() as u16,
-                    hour: dt.hour() as u16,
-                    minute: dt.minute() as u16,
-                    second: dt.second() as u16,
-                    fraction: (dt.nanosecond() as f32 * 0.000001) as u32,
-                };
-                set_output_fixed_data(&data, target_value_ptr, buffer_len, str_len_or_ind_ptr)
-            }
-            CDataType::Time | CDataType::TypeTime => {
-                let dt = to_date(data);
-                let data = Time {
-                    hour: dt.hour() as u16,
-                    minute: dt.minute() as u16,
-                    second: dt.second() as u16,
-                };
-                set_output_fixed_data(&data, target_value_ptr, buffer_len, str_len_or_ind_ptr)
-            }
-            CDataType::Date | CDataType::TypeDate => {
-                let dt = to_date(data);
-                let data = Date {
-                    year: dt.year() as i16,
-                    month: dt.month() as u16,
-                    day: dt.day() as u16,
-                };
-                set_output_fixed_data(&data, target_value_ptr, buffer_len, str_len_or_ind_ptr)
-            }
-            _ => {
-                mongo_handle.add_diag_info(ODBCError::Unimplemented("unimplemented data type"));
-                SqlReturn::ERROR
-            }
-        },
-    }
-}
-
-fn to_string(b: Bson) -> String {
-    match b {
-        Bson::DateTime(d) => d.to_string(),
-        Bson::String(s) => s,
-        _ => b.to_string(),
-    }
-}
-
-fn to_f64(b: Bson) -> f64 {
-    match b {
-        Bson::DateTime(d) => d.timestamp_millis() as f64,
-        Bson::Double(f) => f,
-        Bson::String(s) => f64::from_str(&s).unwrap_or(0.0),
-        Bson::Boolean(b) => {
-            if b {
-                1.0
-            } else {
-                0.0
-            }
+        CDataType::Time | CDataType::TypeTime => {
+            let dt = data.to_date();
+            let data = Time {
+                hour: dt.hour() as u16,
+                minute: dt.minute() as u16,
+                second: dt.second() as u16,
+            };
+            set_output_fixed_data(&data, target_value_ptr, buffer_len, str_len_or_ind_ptr)
         }
-        Bson::Int32(i) => i as f64,
-        Bson::Int64(i) => i as f64,
-        // TODO: Fixme when Decimal128 works.
-        Bson::Decimal128(_d) => 0.0,
-        _ => 0.0,
-    }
-}
-
-fn to_f32(b: Bson) -> f32 {
-    match b {
-        Bson::DateTime(d) => d.timestamp_millis() as f32,
-        Bson::Double(f) => f as f32,
-        Bson::String(s) => f32::from_str(&s).unwrap_or(0.0),
-        Bson::Boolean(b) => {
-            if b {
-                1.0
-            } else {
-                0.0
-            }
+        CDataType::Date | CDataType::TypeDate => {
+            let dt = data.to_date();
+            let data = Date {
+                year: dt.year() as i16,
+                month: dt.month() as u16,
+                day: dt.day() as u16,
+            };
+            set_output_fixed_data(&data, target_value_ptr, buffer_len, str_len_or_ind_ptr)
         }
-        Bson::Int32(i) => i as f32,
-        Bson::Int64(i) => i as f32,
-        // TODO: Fixme when Decimal128 works.
-        Bson::Decimal128(_d) => 0.0,
-        _ => 0.0,
-    }
-}
-
-fn to_i64(b: Bson) -> i64 {
-    match b {
-        Bson::DateTime(d) => d.timestamp_millis(),
-        Bson::Double(f) => f as i64,
-        Bson::String(s) => i64::from_str(&s).unwrap_or(0),
-        Bson::Boolean(b) => {
-            if b {
-                1
-            } else {
-                0
-            }
+        _ => {
+            mongo_handle.add_diag_info(ODBCError::Unimplemented("unimplemented data type"));
+            SqlReturn::ERROR
         }
-        Bson::Int32(i) => i as i64,
-        Bson::Int64(i) => i,
-        // TODO: Fixme when Decimal128 works.
-        Bson::Decimal128(_d) => 0,
-        _ => 0,
-    }
-}
-
-fn to_i32(b: Bson) -> i32 {
-    match b {
-        Bson::DateTime(d) => d.timestamp_millis() as i32,
-        Bson::Double(f) => f as i32,
-        Bson::String(s) => i32::from_str(&s).unwrap_or(0),
-        Bson::Boolean(b) => {
-            if b {
-                1
-            } else {
-                0
-            }
-        }
-        Bson::Int32(i) => i,
-        Bson::Int64(i) => i as i32,
-        // TODO: Fixme when Decimal128 works.
-        Bson::Decimal128(_d) => 0,
-        _ => 0,
-    }
-}
-
-fn to_bool(b: Bson) -> bool {
-    match b {
-        Bson::Double(f) => f != 0.0,
-        Bson::String(s) => matches!(s.as_str(), "1" | "true"),
-        Bson::Boolean(b) => b,
-        Bson::Int32(i) => i != 0,
-        Bson::Int64(i) => i != 0,
-        // TODO: Fixme when Decimal128 works.
-        Bson::Decimal128(_d) => false,
-        _ => false,
-    }
-}
-
-fn to_date(b: Bson) -> DateTime<Utc> {
-    match b {
-        Bson::DateTime(d) => d.into(),
-        // TODO: support strings?
-        _ => Utc.timestamp(0, 0),
     }
 }
 

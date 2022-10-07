@@ -19,3 +19,26 @@ pub use query::MongoQuery;
 pub mod mock_query;
 mod stmt;
 pub use stmt::MongoStatement;
+mod util;
+
+#[macro_export]
+macro_rules! map {
+	($($key:expr => $val:expr),* $(,)?) => {
+		std::iter::Iterator::collect([
+			$({
+				($key, $val)
+			},)*
+		].into_iter())
+	};
+}
+
+#[macro_export]
+macro_rules! set {
+	($($val:expr),* $(,)?) => {
+		std::iter::Iterator::collect([
+			$({
+				$val
+			},)*
+		].into_iter())
+	};
+}
