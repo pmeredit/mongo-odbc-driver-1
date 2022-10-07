@@ -3,6 +3,7 @@ pub(crate) mod errors;
 mod functions;
 pub(crate) mod odbc_uri;
 pub use functions::*;
+mod data;
 
 #[cfg(test)]
 mod col_attr_tests;

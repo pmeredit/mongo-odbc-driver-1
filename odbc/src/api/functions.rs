@@ -8,13 +8,14 @@ use crate::{
     },
     handles::definitions::*,
 };
+use bson::Bson;
 use mongo_odbc_core::{MongoColMetadata, MongoConnection, MongoDatabases, MongoStatement};
 use num_traits::FromPrimitive;
 use odbc_sys::{
-    BulkOperation, CDataType, Char, CompletionType, ConnectionAttribute, Desc, DriverConnectOption,
-    EnvironmentAttribute, FetchOrientation, HDbc, HDesc, HEnv, HStmt, HWnd, Handle, HandleType,
-    InfoType, Integer, Len, Nullability, ParamType, Pointer, RetCode, SmallInt, SqlDataType,
-    SqlReturn, StatementAttribute, ULen, USmallInt, WChar,
+    BulkOperation, CDataType, Char, CompletionType, ConnectionAttribute, Date, Desc,
+    DriverConnectOption, EnvironmentAttribute, FetchOrientation, HDbc, HDesc, HEnv, HStmt, HWnd,
+    Handle, HandleType, InfoType, Integer, Len, Nullability, ParamType, Pointer, RetCode, SmallInt,
+    SqlDataType, SqlReturn, StatementAttribute, Time, Timestamp, ULen, USmallInt, WChar,
 };
 use std::{mem::size_of, sync::RwLock};
 
@@ -1197,14 +1198,45 @@ pub unsafe extern "C" fn SQLGetCursorNameW(
 ///
 #[no_mangle]
 pub unsafe extern "C" fn SQLGetData(
-    _statement_handle: HStmt,
-    _col_or_param_num: USmallInt,
-    _target_type: CDataType,
-    _target_value_ptr: Pointer,
-    _buffer_length: Len,
-    _str_len_or_ind_ptr: *mut Len,
+    statement_handle: HStmt,
+    col_or_param_num: USmallInt,
+    target_type: CDataType,
+    target_value_ptr: Pointer,
+    buffer_length: Len,
+    str_len_or_ind_ptr: *mut Len,
 ) -> SqlReturn {
-    unimplemented!()
+    let mut error = ODBCError::None;
+    let mut ret = Bson::Null;
+    let mongo_handle = MongoHandleRef::from(statement_handle);
+    {
+        let stmt = must_be_valid!((*mongo_handle).as_statement());
+        let mut guard = stmt.write().unwrap();
+        let mongo_stmt = guard.mongo_statement.as_mut();
+        match mongo_stmt {
+            None => error = ODBCError::InvalidCursorState,
+            Some(mongo_stmt) => {
+                let data = mongo_stmt.get_value(col_or_param_num);
+                match data {
+                    Err(e) => error = e.into(),
+                    Ok(None) => error = ODBCError::InvalidDescriptorIndex(col_or_param_num),
+                    Ok(Some(d)) => ret = d,
+                }
+            }
+        }
+    };
+    if !matches!(error, ODBCError::None) {
+        mongo_handle.add_diag_info(error.into());
+        return SqlReturn::ERROR;
+    }
+    crate::api::data::format_and_return_bson(
+        mongo_handle,
+        target_type,
+        target_value_ptr,
+        buffer_length,
+        str_len_or_ind_ptr,
+        ret,
+    );
+    SqlReturn::SUCCESS
 }
 
 ///
