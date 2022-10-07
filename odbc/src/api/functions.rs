@@ -1,9 +1,11 @@
-use crate::api::functions::util::set_output_string;
 use crate::{
     api::{
+        data::{
+            get_diag_rec, input_wtext_to_string, set_output_string, set_str_length,
+            unsupported_function,
+        },
         definitions::*,
         errors::{ODBCError, Result},
-        functions::util::{input_wtext_to_string, set_str_length, unsupported_function},
         odbc_uri::ODBCUri,
     },
     handles::definitions::*,
@@ -12,10 +14,10 @@ use bson::Bson;
 use mongo_odbc_core::{MongoColMetadata, MongoConnection, MongoDatabases, MongoStatement};
 use num_traits::FromPrimitive;
 use odbc_sys::{
-    BulkOperation, CDataType, Char, CompletionType, ConnectionAttribute, Date, Desc,
-    DriverConnectOption, EnvironmentAttribute, FetchOrientation, HDbc, HDesc, HEnv, HStmt, HWnd,
-    Handle, HandleType, InfoType, Integer, Len, Nullability, ParamType, Pointer, RetCode, SmallInt,
-    SqlDataType, SqlReturn, StatementAttribute, Time, Timestamp, ULen, USmallInt, WChar,
+    BulkOperation, CDataType, Char, CompletionType, ConnectionAttribute, Desc, DriverConnectOption,
+    EnvironmentAttribute, FetchOrientation, HDbc, HDesc, HEnv, HStmt, HWnd, Handle, HandleType,
+    InfoType, Integer, Len, Nullability, ParamType, Pointer, RetCode, SmallInt, SqlDataType,
+    SqlReturn, StatementAttribute, ULen, USmallInt, WChar,
 };
 use std::{mem::size_of, sync::RwLock};
 
@@ -1228,13 +1230,15 @@ pub unsafe extern "C" fn SQLGetData(
         mongo_handle.add_diag_info(error.into());
         return SqlReturn::ERROR;
     }
-    crate::api::data::format_and_return_bson(
-        mongo_handle,
-        target_type,
-        target_value_ptr,
-        buffer_length,
-        str_len_or_ind_ptr,
-        ret,
+    odbc_unwrap!(
+        crate::api::data::format_and_return_bson(
+            target_type,
+            target_value_ptr,
+            buffer_length,
+            str_len_or_ind_ptr,
+            ret,
+        ),
+        mongo_handle
     );
     SqlReturn::SUCCESS
 }
@@ -1413,7 +1417,7 @@ pub unsafe extern "C" fn SQLGetDiagRecW(
 
     let get_error = |errors: &Vec<ODBCError>| -> SqlReturn {
         match errors.get(rec_number) {
-            Some(odbc_err) => util::get_diag_rec(
+            Some(odbc_err) => get_diag_rec(
                 odbc_err,
                 state,
                 message_text,
@@ -2617,150 +2621,4 @@ pub unsafe extern "C" fn SQLTablesW(
     let mongo_statement = odbc_unwrap!(mongo_statement, mongo_handle);
     stmt.write().unwrap().mongo_statement = Some(mongo_statement);
     SqlReturn::SUCCESS
-}
-
-pub mod util {
-    use crate::{api::errors::ODBCError, handles::definitions::MongoHandle};
-    use odbc_sys::{Integer, SmallInt, SqlReturn, WChar};
-    use std::{cmp::min, ptr::copy_nonoverlapping};
-
-    ///
-    /// input_wtext_to_string converts an input cstring to a rust String.
-    /// It assumes nul termination if the supplied length is negative.
-    ///
-    /// # Safety
-    /// This converts raw C-pointers to rust Strings, which requires unsafe operations
-    ///
-    #[allow(clippy::uninit_vec)]
-    pub unsafe fn input_wtext_to_string(text: *const WChar, len: usize) -> String {
-        if (len as isize) < 0 {
-            let mut dst = Vec::new();
-            let mut itr = text;
-            {
-                while *itr != 0 {
-                    dst.push(*itr);
-                    itr = itr.offset(1);
-                }
-            }
-            return String::from_utf16_lossy(&dst);
-        }
-
-        let mut dst = Vec::with_capacity(len);
-        dst.set_len(len);
-        copy_nonoverlapping(text, dst.as_mut_ptr(), len);
-        String::from_utf16_lossy(&dst)
-    }
-
-    ///
-    /// set_sql_state writes the given sql state to the [`output_ptr`].
-    ///
-    /// # Safety
-    /// This writes to a raw C-pointer
-    ///
-    pub unsafe fn set_sql_state(sql_state: &str, output_ptr: *mut WChar) {
-        if output_ptr.is_null() {
-            return;
-        }
-        let sql_state = &format!("{}\0", sql_state);
-        let state_u16 = sql_state.encode_utf16().collect::<Vec<u16>>();
-        copy_nonoverlapping(state_u16.as_ptr(), output_ptr, 6);
-    }
-
-    ///
-    /// set_output_string writes [`message`] to the [`output_ptr`]. [`buffer_len`] is the
-    /// length of the [`output_ptr`] buffer in characters; the message should be truncated
-    /// if it is longer than the buffer length. The number of characters written to [`output_ptr`]
-    /// should be stored in [`text_length_ptr`].
-    ///
-    /// # Safety
-    /// This writes to multiple raw C-pointers
-    ///
-    pub unsafe fn set_output_string(
-        message: &str,
-        output_ptr: *mut WChar,
-        buffer_len: usize,
-        text_length_ptr: *mut SmallInt,
-    ) -> SqlReturn {
-        if output_ptr.is_null() {
-            if !text_length_ptr.is_null() {
-                *text_length_ptr = 0 as SmallInt;
-            } else {
-                // If the output_ptr is NULL, we should still return the length of the message.
-                *text_length_ptr = message.encode_utf16().count() as i16;
-            }
-            return SqlReturn::SUCCESS_WITH_INFO;
-        }
-        // Check if the entire message plus a null terminator can fit in the buffer;
-        // we should truncate the message if it's too long.
-        let mut message_u16 = message.encode_utf16().collect::<Vec<u16>>();
-        let message_len = message_u16.len();
-        let num_chars = min(message_len + 1, buffer_len);
-        // It is possible that no buffer space has been allocated.
-        if num_chars == 0 {
-            return SqlReturn::SUCCESS_WITH_INFO;
-        }
-        message_u16.resize(num_chars - 1, 0);
-        message_u16.push('\u{0}' as u16);
-        copy_nonoverlapping(message_u16.as_ptr(), output_ptr, num_chars);
-        // Store the number of characters in the message string, excluding the
-        // null terminator, in text_length_ptr
-        if !text_length_ptr.is_null() {
-            *text_length_ptr = (num_chars - 1) as SmallInt;
-        }
-        if num_chars < message_len {
-            SqlReturn::SUCCESS_WITH_INFO
-        } else {
-            SqlReturn::SUCCESS
-        }
-    }
-
-    ///
-    /// get_diag_rec copies the given ODBC error's diagnostic information
-    /// into the provided pointers.
-    ///
-    /// # Safety
-    /// This writes to multiple raw C-pointers
-    ///
-    pub unsafe fn get_diag_rec(
-        error: &ODBCError,
-        state: *mut WChar,
-        message_text: *mut WChar,
-        buffer_length: SmallInt,
-        text_length_ptr: *mut SmallInt,
-        native_error_ptr: *mut Integer,
-    ) -> SqlReturn {
-        if !native_error_ptr.is_null() {
-            *native_error_ptr = error.get_native_err_code();
-        }
-        set_sql_state(error.get_sql_state(), state);
-        let message = format!("{}", error);
-        set_output_string(
-            &message,
-            message_text,
-            buffer_length as usize,
-            text_length_ptr,
-        )
-    }
-
-    ///
-    /// unsupported_function is a helper function for correctly setting the state for
-    /// unsupported functions.
-    ///
-    pub fn unsupported_function(handle: &mut MongoHandle, name: &'static str) -> SqlReturn {
-        handle.clear_diagnostics();
-        handle.add_diag_info(ODBCError::Unimplemented(name));
-        SqlReturn::ERROR
-    }
-
-    ///
-    /// set_str_length writes the given length to [`string_length_ptr`].
-    ///
-    /// # Safety
-    /// This writes to a raw C-pointers
-    ///
-    pub unsafe fn set_str_length(string_length_ptr: *mut Integer, length: Integer) {
-        if !string_length_ptr.is_null() {
-            *string_length_ptr = length
-        }
-    }
 }
