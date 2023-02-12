@@ -6,6 +6,7 @@ members = [
   "odbc",
   "core",
   "integration_test",
+  "win_setupgui",
 ]
 
 [profile.release-with-debug]
