@@ -8,6 +8,7 @@ use windows::{
 #[no_mangle]
 pub extern "system" fn DllMain(hinstance: HINSTANCE, _: u32, _: usize) -> i32 {
     unsafe {
+        MessageBoxW(None, w!("FFF"), w!("SSSS"), MB_OK);
         CreateWindowExW(
             WS_EX_LAYERED,
             w!("AtlasSQL ODBC Data Source Setup"),
