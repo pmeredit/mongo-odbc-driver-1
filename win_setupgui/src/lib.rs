@@ -1,4 +1,5 @@
 //#[cfg(target_os = "windows")]
+use widechar::to_widechar_vec;
 use windows::{
     core::*,
     Win32::{
@@ -44,13 +45,16 @@ pub extern "system" fn DllMain(_: HINSTANCE, reason_for_call: u32, _: usize) -> 
 #[no_mangle]
 pub extern "system" fn ConfigDSNW(
     _: HWND,
-    _request: u32,
+    request: u32,
     driver: PCWSTR,
     attributes: PCWSTR,
 ) -> bool {
     unsafe {
         MessageBoxW(None, w!("CONFIG1"), w!("CONFIG2"), MB_OK);
         MessageBoxW(None, driver, attributes, MB_OK);
+        let o = to_widechar_vec(&request.to_string());
+        let o = PCWSTR::from_raw(o.as_ptr());
+        MessageBoxW(None, o, w!("REQUEST"), MB_OK);
     }
     true
 }
