@@ -49,6 +49,7 @@ pub extern "system" fn ConfigDSNW(
     attributes: PCWSTR,
 ) -> bool {
     unsafe {
+        MessageBoxW(None, w!("CONFIG"), w!("CONFIG"), MB_OK);
         MessageBoxW(None, driver, attributes, MB_OK);
     }
     true
