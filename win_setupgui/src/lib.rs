@@ -5,7 +5,12 @@ use windows::{core::*, Win32::UI::WindowsAndMessaging::*};
 #[no_mangle]
 pub extern "system" fn DllMain(_: usize, _: u32, _: usize) -> i32 {
     unsafe {
-        MessageBoxW(None, w!("Wide"), w!("Caption"), MB_OK);
+        MessageBoxW(
+            None,
+            w!("I'm the ADF ODBC DRIVER SETUP!!!!!"),
+            w!("YOOOOOOOOOOOO"),
+            MB_OK,
+        );
     }
     1
 }
