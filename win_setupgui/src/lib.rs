@@ -2,7 +2,7 @@
 use windows::{
     core::*,
     Win32::{
-        Foundation::HINSTANCE,
+        Foundation::{HINSTANCE, HWND},
         System::SystemServices::{DLL_PROCESS_ATTACH, DLL_PROCESS_DETACH},
         UI::WindowsAndMessaging::*,
     },
@@ -39,4 +39,32 @@ pub extern "system" fn DllMain(_: HINSTANCE, reason_for_call: u32, _: usize) -> 
         //        );
     }
     1
+}
+
+#[no_mangle]
+pub extern "system" fn ConfigDSNW(
+    _: HWND,
+    _request: u32,
+    driver: PCWSTR,
+    attributes: PCWSTR,
+) -> bool {
+    unsafe {
+        MessageBoxW(None, driver, attributes, MB_OK);
+    }
+    true
+}
+
+#[no_mangle]
+pub extern "system" fn Driver_Prompt(
+    _: HWND,
+    _: *const u16,
+    _: u16,
+    _: *mut u16,
+    _: u16,
+    _: *mut u16,
+) -> bool {
+    unsafe {
+        MessageBoxW(None, w!("DRIVER PROMPT"), w!("DRIVER PROMPT"), MB_OK);
+    }
+    true
 }
