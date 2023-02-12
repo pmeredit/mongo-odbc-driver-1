@@ -6,7 +6,7 @@ use windows::{
 
 //#[cfg(target_os = "windows")]
 #[no_mangle]
-pub extern "system" fn DllMain(hinstance: HINSTANCE, _: u32, _: usize) -> i32 {
+pub extern "system" fn DllMain(_: HINSTANCE, _: u32, _: usize) -> i32 {
     unsafe {
         MessageBoxW(None, w!("FFF"), w!("SSSS"), MB_OK);
         CreateWindowExW(
@@ -20,7 +20,7 @@ pub extern "system" fn DllMain(hinstance: HINSTANCE, _: u32, _: usize) -> i32 {
             300,
             None,
             None,
-            hinstance,
+            None,
             None,
         );
     }
