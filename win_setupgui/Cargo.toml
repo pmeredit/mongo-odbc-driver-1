@@ -1,0 +1,29 @@
+[package]
+name = "win_setupgui"
+version = "0.1.0"
+authors = [
+    "Patrick Meredith <pmeredit@protonmail.com>",
+]
+edition = "2021"
+
+[dependencies]
+odbc-sys = "0.21.2"
+constants = { path = "../constants" }
+mongo-odbc-core = { path = "../core" }
+file_dbg_macros = { path = "../file_dbg_macros" }
+widechar = { path = "../widechar" }
+function_name = "0.3.0"
+
+[dependencies.windows]
+version = "0.44.0"
+features = [
+    "Data_Xml_Dom",
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+]
+
+[lib]
+name = "mongoodbc_s"
+crate-type = ["cdylib", "lib"]
