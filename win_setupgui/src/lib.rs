@@ -60,6 +60,18 @@ pub extern "system" fn ConfigDSNW(
 }
 
 #[no_mangle]
+pub extern "system" fn ConfigDSN(_: HWND, request: u32, driver: PCSTR, attributes: PCSTR) -> bool {
+    unsafe {
+        MessageBoxW(None, w!("CONFIG1A"), w!("CONFIG2A"), MB_OK);
+        MessageBoxA(None, driver, attributes, MB_OK);
+        let o = to_widechar_vec(&request.to_string());
+        let o = PCWSTR::from_raw(o.as_ptr());
+        MessageBoxW(None, o, w!("REQUEST"), MB_OK);
+    }
+    true
+}
+
+#[no_mangle]
 pub extern "system" fn Driver_Prompt(
     _: HWND,
     _: *const u16,
