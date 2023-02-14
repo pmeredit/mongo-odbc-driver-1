@@ -102,7 +102,7 @@ pub extern "system" fn ConfigDSNW(
     attributes: PCWSTR,
 ) -> bool {
     unsafe {
-        let driver_name = driver.to_string().unwrap();
+        let driver_name = format!("{:?}", driver.to_string());
         init_gui(&driver_name);
     }
     true
