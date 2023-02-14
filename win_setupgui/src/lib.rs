@@ -75,19 +75,19 @@ pub extern "system" fn DllMain(_: HINSTANCE, reason_for_call: u32, _: usize) -> 
     unsafe {
         match reason_for_call {
             DLL_PROCESS_ATTACH => {
-                MessageBoxW(None, w!("ATTACH1"), w!("ATTACH2"), MB_OK);
+                //MessageBoxW(None, w!("ATTACH1"), w!("ATTACH2"), MB_OK);
             }
             DLL_PROCESS_DETACH => {
-                MessageBoxW(None, w!("DETACH1"), w!("DETACH2"), MB_OK);
+                //MessageBoxW(None, w!("DETACH1"), w!("DETACH2"), MB_OK);
             }
             DLL_THREAD_ATTACH => {
-                MessageBoxW(None, w!("TA1"), w!("TA2"), MB_OK);
+                //MessageBoxW(None, w!("TA1"), w!("TA2"), MB_OK);
             }
             DLL_THREAD_DETACH => {
-                MessageBoxW(None, w!("TD1"), w!("TD2"), MB_OK);
+                //MessageBoxW(None, w!("TD1"), w!("TD2"), MB_OK);
             }
             _ => {
-                MessageBoxW(None, w!("U"), w!("U"), MB_OK);
+                //MessageBoxW(None, w!("U"), w!("U"), MB_OK);
             }
         }
     }
