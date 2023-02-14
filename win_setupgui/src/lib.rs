@@ -61,10 +61,11 @@ impl BasicApp {
     }
 }
 
-fn init_gui() {
+fn init_gui(driver_name: &str) {
     nwg::init().expect("Failed to init Native Windows GUI");
     nwg::Font::set_global_family("Segoe UI").expect("Failed to set default font");
-    let _app = BasicApp::build_ui(Default::default()).expect("Failed to build UI");
+    let mut app = BasicApp::build_ui(Default::default()).expect("Failed to build UI");
+    app.name_edit = driver_name;
     nwg::dispatch_thread_events();
 }
 
@@ -101,12 +102,8 @@ pub extern "system" fn ConfigDSNW(
     attributes: PCWSTR,
 ) -> bool {
     unsafe {
-        MessageBoxW(None, w!("CONFIG1"), w!("CONFIG2"), MB_OK);
-        MessageBoxW(None, driver, attributes, MB_OK);
-        let o = to_widechar_vec(&request.to_string());
-        let o = PCWSTR::from_raw(o.as_ptr());
-        MessageBoxW(None, o, w!("REQUEST"), MB_OK);
-        init_gui();
+        let driver_name = PCWSTR::from_raw(to_widechar_vec(&request.to_string()));
+        init_gui(driver_name);
     }
     true
 }
