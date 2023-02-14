@@ -10,7 +10,9 @@ use windows::{
     core::{w, PCSTR, PCWSTR},
     Win32::{
         Foundation::{HINSTANCE, HWND},
-        System::SystemServices::{DLL_PROCESS_ATTACH, DLL_PROCESS_DETACH},
+        System::SystemServices::{
+            DLL_PROCESS_ATTACH, DLL_PROCESS_DETACH, DLL_THREAD_ATTACH, DLL_THREAD_DETACH,
+        },
         UI::WindowsAndMessaging::{MessageBoxA, MessageBoxW, MB_OK},
     },
 };
@@ -77,10 +79,14 @@ pub extern "system" fn DllMain(_: HINSTANCE, reason_for_call: u32, _: usize) -> 
             DLL_PROCESS_DETACH => {
                 MessageBoxW(None, w!("DETACH1"), w!("DETACH2"), MB_OK);
             }
+            DLL_THREAD_ATTACH => {
+                MessageBoxW(None, w!("TA1"), w!("TA2"), MB_OK);
+            }
+            DLL_THREAD_DETACH => {
+                MessageBoxW(None, w!("TD1"), w!("TD2"), MB_OK);
+            }
             _ => {
-                let o = to_widechar_vec(&reason_for_call.to_string());
-                let o = PCWSTR::from_raw(o.as_ptr());
-                MessageBoxW(None, w!("UNKNOWN1"), o, MB_OK);
+                MessageBoxW(None, w!("U"), w!("U"), MB_OK);
             }
         }
     }
