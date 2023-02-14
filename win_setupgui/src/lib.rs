@@ -7,11 +7,11 @@
 //#[cfg(target_os = "windows")]
 use widechar::to_widechar_vec;
 use windows::{
-    core::*,
+    core::{w, PCSTR, PCWSTR},
     Win32::{
         Foundation::{HINSTANCE, HWND},
         System::SystemServices::{DLL_PROCESS_ATTACH, DLL_PROCESS_DETACH},
-        UI::WindowsAndMessaging::*,
+        UI::WindowsAndMessaging::{MessageBoxA, MessageBoxW},
     },
 };
 
