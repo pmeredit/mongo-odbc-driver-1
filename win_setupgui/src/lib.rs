@@ -11,7 +11,7 @@ use windows::{
     Win32::{
         Foundation::{HINSTANCE, HWND},
         System::SystemServices::{DLL_PROCESS_ATTACH, DLL_PROCESS_DETACH},
-        UI::WindowsAndMessaging::{MessageBoxA, MessageBoxW},
+        UI::WindowsAndMessaging::{MessageBoxA, MessageBoxW, MB_OK},
     },
 };
 
