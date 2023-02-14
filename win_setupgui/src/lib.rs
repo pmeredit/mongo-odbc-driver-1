@@ -72,29 +72,17 @@ pub extern "system" fn DllMain(_: HINSTANCE, reason_for_call: u32, _: usize) -> 
     unsafe {
         match reason_for_call {
             DLL_PROCESS_ATTACH => {
-                MessageBoxW(None, w!("ATTACH"), w!("ATTACHS"), MB_OK);
+                MessageBoxW(None, w!("ATTACH1"), w!("ATTACH2"), MB_OK);
             }
             DLL_PROCESS_DETACH => {
-                MessageBoxW(None, w!("DETACH"), w!("DETACHS"), MB_OK);
+                MessageBoxW(None, w!("DETACH1"), w!("DETACH2"), MB_OK);
             }
             _ => {
-                MessageBoxW(None, w!("UNKNOWN"), w!("UNKNOWN"), MB_OK);
+                let o = to_widechar_vec(&reason_for_call.to_string());
+                let o = PCWSTR::from_raw(o.as_ptr());
+                MessageBoxW(None, w!("UNKNOWN1"), o, MB_OK);
             }
         }
-        //        CreateWindowExW(
-        //            WS_EX_LAYERED,
-        //            w!("AtlasSQL ODBC Data Source Setup"),
-        //            w!("FOO"),
-        //            WS_OVERLAPPEDWINDOW,
-        //            200,
-        //            200,
-        //            400,
-        //            300,
-        //            None,
-        //            None,
-        //            None,
-        //            None,
-        //        );
     }
     1
 }
