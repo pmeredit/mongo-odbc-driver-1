@@ -32,7 +32,8 @@ pub struct BasicApp {
     #[nwg_layout(parent: window, spacing: 1)]
     grid: nwg::GridLayout,
 
-    #[nwg_layout_item(layout: grid, row: 0, col: 0, col_span: 2, from_file: "Banner.bmp")]
+    #[nwg_resource(source_file: Some("./Banner.bmp"), size: Some((300, 50)))]
+    #[nwg_layout_item(layout: grid, row: 0, col: 0, col_span: 2)]
     banner: nwg::Bitmap,
 
     #[nwg_control(text: "", focus: true)]
