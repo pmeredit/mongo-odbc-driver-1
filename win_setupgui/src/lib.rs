@@ -27,7 +27,7 @@ use nwg::NativeUi;
 pub struct BasicApp {
     //#[nwg_resource(source_file: Some("./Banner.bmp"))]
     // banner: nwg::Bitmap,
-    #[nwg_control(size: (600, 500), position: (300, 300), title: "Basic example", flags: "WINDOW|VISIBLE")]
+    #[nwg_control(size: (600, 300), position: (300, 300), title: "Basic example", flags: "WINDOW|VISIBLE")]
     #[nwg_events( OnWindowClose: [BasicApp::say_goodbye] )]
     window: nwg::Window,
 
