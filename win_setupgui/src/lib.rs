@@ -36,6 +36,7 @@ pub struct BasicApp {
     grid: nwg::GridLayout,
 
     #[nwg_control(bitmap: Some(&data.banner), size(950, 100))]
+    #[nwg_layout_item(layout: grid, row: 0, col: 0)]
     frame: nwg::ImageFrame,
 
     #[nwg_control(text: "", focus: true)]
