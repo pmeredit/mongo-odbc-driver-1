@@ -32,12 +32,16 @@ pub struct BasicApp {
     #[nwg_layout(parent: window, spacing: 1)]
     grid: nwg::GridLayout,
 
-    #[nwg_control(text: "Heisenberg", focus: true)]
+    #[nwg_control(text: "", focus: true)]
     #[nwg_layout_item(layout: grid, row: 0, col: 0)]
-    name_edit: nwg::TextInput,
+    driver_name: nwg::TextInput,
+
+    #[nwg_control(text: "Description", focus: false)]
+    #[nwg_layout_item(layout: grid, row: 0, col: 1)]
+    description: nwg::TextInput,
 
     #[nwg_control(text: "Say my name")]
-    #[nwg_layout_item(layout: grid, col: 0, row: 1, row_span: 2)]
+    #[nwg_layout_item(layout: grid, col: 0, row: 1, row_span: 2, col_span: 2)]
     #[nwg_events( OnButtonClick: [BasicApp::say_hello] )]
     hello_button: nwg::Button,
 }
@@ -65,7 +69,7 @@ fn init_gui(driver_name: &str) {
     nwg::init().expect("Failed to init Native Windows GUI");
     nwg::Font::set_global_family("Segoe UI").expect("Failed to set default font");
     let mut app = BasicApp::build_ui(Default::default()).expect("Failed to build UI");
-    app.name_edit.set_text(driver_name);
+    app.driver_name.set_text(driver_name);
     nwg::dispatch_thread_events();
 }
 
