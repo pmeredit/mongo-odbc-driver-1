@@ -25,25 +25,29 @@ use nwg::NativeUi;
 
 #[derive(Default, NwgUi)]
 pub struct BasicApp {
-    //#[nwg_resource(source_file: Some("./Banner.bmp"))]
-    //banner: nwg::Bitmap,
-    #[nwg_control(size: (300, 115), position: (300, 300), title: "Basic example", flags: "WINDOW|VISIBLE")]
+    #[nwg_resource(source_file: Some("./Banner.bmp"))]
+    banner: nwg::Bitmap,
+
+    #[nwg_control(size: (300, 115), position: (1000, 600), title: "Basic example", flags: "WINDOW|VISIBLE")]
     #[nwg_events( OnWindowClose: [BasicApp::say_goodbye] )]
     window: nwg::Window,
 
     #[nwg_layout(parent: window, spacing: 1)]
     grid: nwg::GridLayout,
 
+    #[nwg_control(bitmap: Some(&data.banner), size(950, 100))]
+    frame: nwg::ImageFrame,
+
     #[nwg_control(text: "", focus: true)]
-    #[nwg_layout_item(layout: grid, row: 0, col: 0)]
+    #[nwg_layout_item(layout: grid, row: 1, col: 0)]
     driver_name: nwg::TextInput,
 
     #[nwg_control(text: "Description", focus: false)]
-    #[nwg_layout_item(layout: grid, row: 0, col: 1)]
+    #[nwg_layout_item(layout: grid, row: 1, col: 1)]
     description: nwg::TextInput,
 
     #[nwg_control(text: "Say my name")]
-    #[nwg_layout_item(layout: grid, row: 1, col: 0, row_span: 2, col_span: 2)]
+    #[nwg_layout_item(layout: grid, row: 2, col: 0, row_span: 2, col_span: 2)]
     #[nwg_events( OnButtonClick: [BasicApp::say_hello] )]
     hello_button: nwg::Button,
 }
