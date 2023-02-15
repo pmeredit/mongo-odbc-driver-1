@@ -51,7 +51,7 @@ impl BasicApp {
         nwg::modal_info_message(
             &self.window,
             "Hello",
-            &format!("Hello {}", self.name_edit.text()),
+            &format!("Hello {}", self.driver_name.text()),
         );
     }
 
@@ -59,7 +59,7 @@ impl BasicApp {
         nwg::modal_info_message(
             &self.window,
             "Goodbye",
-            &format!("Goodbye {}", self.name_edit.text()),
+            &format!("Goodbye {}", self.driver_name.text()),
         );
         nwg::stop_thread_dispatch();
     }
