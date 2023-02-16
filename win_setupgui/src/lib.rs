@@ -22,6 +22,7 @@ extern crate native_windows_gui as nwg;
 
 use nwd::NwgUi;
 use nwg::NativeUi;
+use winreg::{RegKey, enums::HKEY_LOCAL_MACHINE};
 
 #[derive(Default, NwgUi)]
 pub struct SetupGUI {
@@ -38,68 +39,76 @@ pub struct SetupGUI {
     #[nwg_layout_item(layout: grid, row: 0, col: 0, col_span: 7, row_span: 2)]
     frame: nwg::ImageFrame,
 
-    #[nwg_control(flags: "VISIBLE", text: "User")]
+    #[nwg_control(flags: "VISIBLE", text: "DS Name")]
     #[nwg_layout_item(layout: grid, row: 2, col: 1, col_span: 1)]
-    user_field: nwg::Label,
+    dsn_field: nwg::Label,
     
     #[nwg_control(flags: "VISIBLE", text: "")]
     #[nwg_layout_item(layout: grid, row: 2, col: 2, col_span: 5)]
+    dsn_input: nwg::TextBox,
+
+    #[nwg_control(flags: "VISIBLE", text: "User")]
+    #[nwg_layout_item(layout: grid,  row: 3, col: 1, col_span: 1)]
+    user_field: nwg::Label,
+    
+    #[nwg_control(flags: "VISIBLE", text: "")]
+    #[nwg_layout_item(layout: grid,  row: 3, col: 2, col_span: 5)]
     user_input: nwg::TextBox,
     
     #[nwg_control(flags: "VISIBLE", text: "Password")]
-    #[nwg_layout_item(layout: grid, row: 3, col: 1, col_span: 1)]
+    #[nwg_layout_item(layout: grid,  row: 4, col: 1, col_span: 1)]
     password_field: nwg::Label,
     
     #[nwg_control(flags: "VISIBLE", text: "")]
-    #[nwg_layout_item(layout: grid, row: 3, col: 2, col_span: 5)]
+    #[nwg_layout_item(layout: grid,  row: 4, col: 2, col_span: 5)]
     password_input: nwg::TextBox,
 
     #[nwg_control(flags: "VISIBLE", text: "Mongo URI:", check_state: nwg::RadioButtonState::Checked)]
-    #[nwg_layout_item(layout: grid, row: 4, col: 0, col_span: 6)]
+    #[nwg_layout_item(layout: grid, row: 5, col: 0, col_span: 6)]
     #[nwg_events( OnButtonClick: [SetupGUI::choose_uri] )]
     radio_uri: nwg::RadioButton,
 
     #[nwg_control(flags: "VISIBLE", text: "")]
-    #[nwg_layout_item(layout: grid, row: 5, col: 1, col_span: 6)]
+    #[nwg_layout_item(layout: grid, row: 6, col: 1, col_span: 6)]
     uri_input: nwg::TextBox,
 
     #[nwg_control(flags: "VISIBLE", text: "Connection Properties:")]
     #[nwg_events( OnButtonClick: [SetupGUI::choose_props] )]
-    #[nwg_layout_item(layout: grid, row: 6, col: 0, col_span: 6)]
+    #[nwg_layout_item(layout: grid, row: 7, col: 0, col_span: 6)]
     radio_props: nwg::RadioButton,
 
     #[nwg_control(flags: "VISIBLE", text: "Server")]
-    #[nwg_layout_item(layout: grid, row: 7, col: 1, col_span: 1)]
+    #[nwg_layout_item(layout: grid,  row: 8, col: 1, col_span: 1)]
     server_field: nwg::Label,
     
     #[nwg_control(flags: "VISIBLE", text: "")]
-    #[nwg_layout_item(layout: grid, row: 7, col: 2, col_span: 5)]
+    #[nwg_layout_item(layout: grid,  row: 8, col: 2, col_span: 5)]
     server_input: nwg::TextBox,
 
     #[nwg_control(flags: "VISIBLE", text: "Database")]
-    #[nwg_layout_item(layout: grid, row: 8, col: 1, col_span: 1)]
+    #[nwg_layout_item(layout: grid,  row: 9, col: 1, col_span: 1)]
     database_field: nwg::Label,
     
     #[nwg_control(flags: "VISIBLE", text: "")]
-    #[nwg_layout_item(layout: grid, row: 8, col: 2, col_span: 5)]
+    #[nwg_layout_item(layout: grid,  row: 9, col: 2, col_span: 5)]
     database_input: nwg::TextBox,
 
     #[nwg_control(flags: "VISIBLE", text: "Test")]
-    #[nwg_layout_item(layout: grid, row: 9, col: 2, col_span: 1)]
+    #[nwg_layout_item(layout: grid,  row: 10, col: 2, col_span: 1)]
     test_button: nwg::Button,
 
     #[nwg_control(flags: "VISIBLE", text: "Ok")]
     #[nwg_events( OnButtonClick: [SetupGUI::set_keys] )]
-    #[nwg_layout_item(layout: grid, row: 9, col: 4, col_span: 1)]
+    #[nwg_layout_item(layout: grid,  row: 10, col: 4, col_span: 1)]
     ok_button: nwg::Button,
 
     #[nwg_control(flags: "VISIBLE", text: "Cancel")]
     #[nwg_events( OnButtonClick: [SetupGUI::close] )]
-    #[nwg_layout_item(layout: grid, row: 9, col: 5, col_span: 1)]
+    #[nwg_layout_item(layout: grid,  row: 10, col: 5, col_span: 1)]
     cancel_button: nwg::Button,
 
     #[nwg_control(flags: "VISIBLE", text: "Help")]
-    #[nwg_layout_item(layout: grid, row: 9, col: 6, col_span: 1)]
+    #[nwg_layout_item(layout: grid,  row: 10, col: 6, col_span: 1)]
     help_button: nwg::Button,
 
     #[nwg_control(text: "")]
@@ -121,8 +130,21 @@ impl SetupGUI {
 
     fn set_keys(&self) {
         unsafe {
-            let o = PCWSTR::from_raw(widechar::to_widechar_vec(&self.driver.text()).as_ptr());
-            MessageBoxW(None, o, w!("SET"), MB_OK);
+            // TODO: Support user DSNs
+            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+            let (settings, disp) = hklm.create_subkey("Software\\ODBC\\ODBC.INI\\".to_string() + &self.dsn_input.text()).unwrap();
+            match self.radio_uri.check_state() {
+                nwg::RadioButtonState::Checked => {
+                    settings.set_value("URI", &self.uri_input.text()).unwrap();
+                }
+                nwg::RadioButtonState::Unchecked => {
+                    settings.set_value("SERVER", &self.server_input.text()).unwrap();
+                    settings.set_value("DATABASE", &self.database_input.text()).unwrap();
+                }
+            }       
+            settings.set_value("USER", &self.user_input.text()).unwrap();
+            settings.set_value("PASSWORD", &self.password_input.text()).unwrap();
+            self.close();
         }
     }
 }
