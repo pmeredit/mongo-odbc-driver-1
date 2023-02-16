@@ -54,7 +54,7 @@ pub struct SetupGUI {
     #[nwg_layout_item(layout: grid, row: 3, col: 2, col_span: 5)]
     password_input: nwg::TextBox,
 
-    #[nwg_control(flags: "VISIBLE", text: "Mongo URI:")]
+    #[nwg_control(flags: "VISIBLE", text: "Mongo URI:", check_state: nwg::RadioButtonState::Checked)]
     #[nwg_layout_item(layout: grid, row: 4, col: 0, col_span: 6)]
     #[nwg_events( OnButtonClick: [SetupGUI::choose_uri] )]
     radio_uri: nwg::RadioButton,
