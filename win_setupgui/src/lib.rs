@@ -24,11 +24,11 @@ use nwd::NwgUi;
 use nwg::NativeUi;
 
 #[derive(Default, NwgUi)]
-pub struct BasicApp {
+pub struct SetupGUI {
     #[nwg_resource(source_file: Some("./Banner.bmp"))]
      banner: nwg::Bitmap,
     #[nwg_control(size: (600, 450), position: (500, 500), title: "AtlasSQL ODBC Driver Source Configuration", flags: "WINDOW|VISIBLE")]
-    #[nwg_events( OnWindowClose: [BasicApp::close] )]
+    #[nwg_events( OnWindowClose: [SetupGUI::close] )]
     window: nwg::Window,
 
     #[nwg_layout(parent: window, spacing: 5)]
@@ -56,7 +56,7 @@ pub struct BasicApp {
 
     #[nwg_control(flags: "VISIBLE", text: "Mongo URI:")]
     #[nwg_layout_item(layout: grid, row: 4, col: 0, col_span: 6)]
-    #[nwg_events( OnButtonClick: [BasicApp::choose_uri] )]
+    #[nwg_events( OnButtonClick: [SetupGUI::choose_uri] )]
     radio_uri: nwg::RadioButton,
 
     #[nwg_control(flags: "VISIBLE", text: "")]
@@ -64,7 +64,7 @@ pub struct BasicApp {
     uri_input: nwg::TextBox,
 
     #[nwg_control(flags: "VISIBLE", text: "Connection Properties:")]
-    #[nwg_events( OnButtonClick: [BasicApp::choose_props] )]
+    #[nwg_events( OnButtonClick: [SetupGUI::choose_props] )]
     #[nwg_layout_item(layout: grid, row: 6, col: 0, col_span: 6)]
     radio_props: nwg::RadioButton,
 
@@ -89,20 +89,24 @@ pub struct BasicApp {
     test_button: nwg::Button,
 
     #[nwg_control(flags: "VISIBLE", text: "Ok")]
+    #[nwg_events( OnButtonClick: [SetupGUI::set_keys] )]
     #[nwg_layout_item(layout: grid, row: 9, col: 4, col_span: 1)]
     ok_button: nwg::Button,
 
     #[nwg_control(flags: "VISIBLE", text: "Cancel")]
-    #[nwg_events( OnButtonClick: [BasicApp::close] )]
+    #[nwg_events( OnButtonClick: [SetupGUI::close] )]
     #[nwg_layout_item(layout: grid, row: 9, col: 5, col_span: 1)]
     cancel_button: nwg::Button,
 
     #[nwg_control(flags: "VISIBLE", text: "Help")]
     #[nwg_layout_item(layout: grid, row: 9, col: 6, col_span: 1)]
     help_button: nwg::Button,
+
+    #[nwg_control(text: "")]
+    driver: nwg::TextBox,
 }
 
-impl BasicApp {
+impl SetupGUI {
     fn choose_uri(&self) {
         self.radio_props.set_check_state(nwg::RadioButtonState::Unchecked);
     }
@@ -114,12 +118,21 @@ impl BasicApp {
     fn close(&self) {
         nwg::stop_thread_dispatch();
     }
+
+    fn set_keys(&self) {
+        unsafe {
+            let o = PCWSTR::from_raw(widechar::to_widechar_vec(&self.driver.text()).as_ptr());
+            MessageBoxW(None, o, w!("SET"), MB_OK);
+        }
+    }
 }
 
-fn init_gui() {
+fn init_gui(driver: String) {
     nwg::init().expect("Failed to init Native Windows GUI");
     nwg::Font::set_global_family("Segoe UI").expect("Failed to set default font");
-    let app = BasicApp::build_ui(Default::default()).expect("Failed to build UI");
+    let mut app = SetupGUI::build_ui(Default::default()).expect("Failed to build UI");
+    app.driver.set_visible(false);
+    app.driver.set_text(&driver);
     nwg::dispatch_thread_events();
 }
 
@@ -155,19 +168,7 @@ pub extern "system" fn ConfigDSNW(
     driver: PCWSTR,
     attributes: PCWSTR,
 ) -> bool {
-    init_gui();
-    true
-}
-
-#[no_mangle]
-pub extern "system" fn ConfigDSN(_: HWND, request: u32, driver: PCSTR, attributes: PCSTR) -> bool {
-    unsafe {
-        MessageBoxW(None, w!("CONFIG1A"), w!("CONFIG2A"), MB_OK);
-        MessageBoxA(None, driver, attributes, MB_OK);
-        let o = to_widechar_vec(&request.to_string());
-        let o = PCWSTR::from_raw(o.as_ptr());
-        MessageBoxW(None, o, w!("REQUEST"), MB_OK);
-    }
+    init_gui(unsafe{ driver.to_string().unwrap() });
     true
 }
 
