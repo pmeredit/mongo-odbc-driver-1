@@ -155,6 +155,7 @@ fn init_gui(driver: String) {
     let mut app = SetupGUI::build_ui(Default::default()).expect("Failed to build UI");
     app.driver.set_visible(false);
     app.driver.set_text(&driver);
+    app.dsn_input.set_focus();
     nwg::dispatch_thread_events();
 }
 
