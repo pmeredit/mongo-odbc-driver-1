@@ -27,7 +27,7 @@ use nwg::NativeUi;
 pub struct BasicApp {
     #[nwg_resource(source_file: Some("./Banner.bmp"))]
      banner: nwg::Bitmap,
-    #[nwg_control(size: (600, 400), position: (500, 500), title: "AtlasSQL ODBC Driver Source Configuration", flags: "WINDOW|VISIBLE")]
+    #[nwg_control(size: (600, 500), position: (500, 500), title: "AtlasSQL ODBC Driver Source Configuration", flags: "WINDOW|VISIBLE")]
     #[nwg_events( OnWindowClose: [BasicApp::close] )]
     window: nwg::Window,
 
@@ -83,6 +83,22 @@ pub struct BasicApp {
     #[nwg_control(flags: "VISIBLE", text: "")]
     #[nwg_layout_item(layout: grid, row: 8, col: 2, col_span: 5)]
     database_input: nwg::TextBox,
+
+    #[nwg_control(flags: "VISIBLE", text: "Test")]
+    #[nwg_layout_item(layout: grid, row: 9, col: 2, col_span: 1)]
+    test_button: nwg::Button,
+
+    #[nwg_control(flags: "VISIBLE", text: "Ok")]
+    #[nwg_layout_item(layout: grid, row: 9, col: 4, col_span: 1)]
+    ok_button: nwg::Button,
+
+    #[nwg_control(flags: "VISIBLE", text: "Cancel")]
+    #[nwg_layout_item(layout: grid, row: 9, col: 5, col_span: 1)]
+    cancel_button: nwg::Button,
+
+    #[nwg_control(flags: "VISIBLE", text: "Help")]
+    #[nwg_layout_item(layout: grid, row: 9, col: 6, col_span: 1)]
+    help_button: nwg::Button,
 }
 
 impl BasicApp {
