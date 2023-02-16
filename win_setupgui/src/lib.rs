@@ -25,56 +25,84 @@ use nwg::NativeUi;
 
 #[derive(Default, NwgUi)]
 pub struct BasicApp {
-    //#[nwg_resource(source_file: Some("./Banner.bmp"))]
-    // banner: nwg::Bitmap,
-    #[nwg_control(size: (600, 400), position: (300, 300), title: "Basic example", flags: "WINDOW|VISIBLE")]
-    #[nwg_events( OnWindowClose: [BasicApp::say_goodbye] )]
+    #[nwg_resource(source_file: Some("./Banner.bmp"))]
+     banner: nwg::Bitmap,
+    #[nwg_control(size: (600, 400), position: (500, 500), title: "AtlasSQL ODBC Driver Source Configuration", flags: "WINDOW|VISIBLE")]
+    #[nwg_events( OnWindowClose: [BasicApp::close] )]
     window: nwg::Window,
 
-    #[nwg_layout(parent: window, spacing: 1)]
+    #[nwg_layout(parent: window, spacing: 10)]
     grid: nwg::GridLayout,
 
-    //#[nwg_control(bitmap: Some(&data.banner), size(950, 100))]
-    //#[nwg_layout_item(layout: grid, row: 0, col: 0)]
-    //frame: nwg::ImageFrame,
-    #[nwg_control(text: "", focus: true)]
-    #[nwg_layout_item(layout: grid, row: 0, col: 0)]
-    driver_name: nwg::TextInput,
+    #[nwg_control(bitmap: Some(&data.banner))]
+    #[nwg_layout_item(layout: grid, row: 0, col: 0, col_span: 7, row_span: 2)]
+    frame: nwg::ImageFrame,
 
-    #[nwg_control(text: "Description", focus: false)]
-    #[nwg_layout_item(layout: grid, row: 0, col: 1)]
-    description: nwg::TextInput,
+    #[nwg_control(flags: "VISIBLE", text: "User")]
+    #[nwg_layout_item(layout: grid, row: 2, col: 1, col_span: 1)]
+    user_field: nwg::Label,
+    
+    #[nwg_control(flags: "VISIBLE", text: "")]
+    #[nwg_layout_item(layout: grid, row: 2, col: 2, col_span: 5)]
+    user_input: nwg::TextBox,
+    
+    #[nwg_control(flags: "VISIBLE", text: "Password")]
+    #[nwg_layout_item(layout: grid, row: 3, col: 1, col_span: 1)]
+    password_field: nwg::Label,
+    
+    #[nwg_control(flags: "VISIBLE", text: "")]
+    #[nwg_layout_item(layout: grid, row: 3, col: 2, col_span: 5)]
+    password_input: nwg::TextBox,
 
-    #[nwg_control(text: "Say my name")]
-    #[nwg_layout_item(layout: grid, row: 1, col: 0, row_span: 2, col_span: 2)]
-    #[nwg_events( OnButtonClick: [BasicApp::say_hello] )]
-    hello_button: nwg::Button,
+    #[nwg_control(flags: "VISIBLE", text: "Mongo URI:")]
+    #[nwg_layout_item(layout: grid, row: 4, col: 0, col_span: 6)]
+    #[nwg_events( OnButtonClick: [BasicApp::choose_uri] )]
+    radio_uri: nwg::RadioButton,
+
+    #[nwg_control(flags: "VISIBLE", text: "")]
+    #[nwg_layout_item(layout: grid, row: 5, col: 1, col_span: 6)]
+    uri_input: nwg::TextBox,
+
+    #[nwg_control(flags: "VISIBLE", text: "Connection Properties:")]
+    #[nwg_events( OnButtonClick: [BasicApp::choose_props] )]
+    #[nwg_layout_item(layout: grid, row: 6, col: 0, col_span: 6)]
+    radio_props: nwg::RadioButton,
+
+    #[nwg_control(flags: "VISIBLE", text: "Server")]
+    #[nwg_layout_item(layout: grid, row: 7, col: 1, col_span: 1)]
+    server_field: nwg::Label,
+    
+    #[nwg_control(flags: "VISIBLE", text: "")]
+    #[nwg_layout_item(layout: grid, row: 7, col: 2, col_span: 5)]
+    server_input: nwg::TextBox,
+
+    #[nwg_control(flags: "VISIBLE", text: "Database")]
+    #[nwg_layout_item(layout: grid, row: 8, col: 1, col_span: 1)]
+    database_field: nwg::Label,
+    
+    #[nwg_control(flags: "VISIBLE", text: "")]
+    #[nwg_layout_item(layout: grid, row: 8, col: 2, col_span: 5)]
+    database_input: nwg::TextBox,
 }
 
 impl BasicApp {
-    fn say_hello(&self) {
-        nwg::modal_info_message(
-            &self.window,
-            "Hello",
-            &format!("Hello {}", self.driver_name.text()),
-        );
+    fn choose_uri(&self) {
+        self.radio_props.set_check_state(nwg::RadioButtonState::Unchecked);
     }
 
-    fn say_goodbye(&self) {
-        nwg::modal_info_message(
-            &self.window,
-            "Goodbye",
-            &format!("Goodbye {}", self.driver_name.text()),
-        );
+    fn choose_props(&self) {
+        self.radio_uri.set_check_state(nwg::RadioButtonState::Unchecked);
+    }
+
+    fn close(&self) {
         nwg::stop_thread_dispatch();
     }
 }
 
-fn init_gui(driver_name: &str) {
+fn init_gui() {
     nwg::init().expect("Failed to init Native Windows GUI");
     nwg::Font::set_global_family("Segoe UI").expect("Failed to set default font");
-    let mut app = BasicApp::build_ui(Default::default()).expect("Failed to build UI");
-    app.driver_name.set_text(driver_name);
+    let app = BasicApp::build_ui(Default::default()).expect("Failed to build UI");
     nwg::dispatch_thread_events();
 }
 
@@ -110,10 +138,7 @@ pub extern "system" fn ConfigDSNW(
     driver: PCWSTR,
     attributes: PCWSTR,
 ) -> bool {
-    unsafe {
-        let driver_name = format!("{:?}", driver.to_string());
-        init_gui(&driver_name);
-    }
+    init_gui();
     true
 }
 
