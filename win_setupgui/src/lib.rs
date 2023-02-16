@@ -27,11 +27,11 @@ use nwg::NativeUi;
 pub struct BasicApp {
     #[nwg_resource(source_file: Some("./Banner.bmp"))]
      banner: nwg::Bitmap,
-    #[nwg_control(size: (600, 500), position: (500, 500), title: "AtlasSQL ODBC Driver Source Configuration", flags: "WINDOW|VISIBLE")]
+    #[nwg_control(size: (600, 450), position: (500, 500), title: "AtlasSQL ODBC Driver Source Configuration", flags: "WINDOW|VISIBLE")]
     #[nwg_events( OnWindowClose: [BasicApp::close] )]
     window: nwg::Window,
 
-    #[nwg_layout(parent: window, spacing: 10)]
+    #[nwg_layout(parent: window, spacing: 5)]
     grid: nwg::GridLayout,
 
     #[nwg_control(bitmap: Some(&data.banner))]
@@ -93,6 +93,7 @@ pub struct BasicApp {
     ok_button: nwg::Button,
 
     #[nwg_control(flags: "VISIBLE", text: "Cancel")]
+    #[nwg_events( OnButtonClick: [BasicApp::close] )]
     #[nwg_layout_item(layout: grid, row: 9, col: 5, col_span: 1)]
     cancel_button: nwg::Button,
 
