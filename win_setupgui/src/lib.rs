@@ -43,7 +43,7 @@ pub struct SetupGUI {
     #[nwg_layout_item(layout: grid, row: 2, col: 1, col_span: 1)]
     dsn_field: nwg::Label,
     
-    #[nwg_control(flags: "VISIBLE", text: "")]
+    #[nwg_control(flags: "VISIBLE", text: "", focus: true)]
     #[nwg_layout_item(layout: grid, row: 2, col: 2, col_span: 5)]
     dsn_input: nwg::TextBox,
 
@@ -155,7 +155,6 @@ fn init_gui(driver: String) {
     let mut app = SetupGUI::build_ui(Default::default()).expect("Failed to build UI");
     app.driver.set_visible(false);
     app.driver.set_text(&driver);
-    app.dsn_input.set_focus();
     nwg::dispatch_thread_events();
 }
 
