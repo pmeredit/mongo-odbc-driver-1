@@ -11,3 +11,30 @@ pub fn from_widechar_ref_lossy(v: &[u16]) -> String {
 pub fn to_widechar_vec(s: &str) -> Vec<WideChar> {
     widestring::encode_utf16(s.chars()).collect::<Vec<_>>()
 }
+
+///
+/// input_wtext_to_string converts an input cstring to a rust String.
+/// It assumes nul termination if the supplied length is negative.
+///
+/// # Safety
+/// This converts raw C-pointers to rust Strings, which requires unsafe operations
+///
+#[allow(clippy::uninit_vec)]
+pub unsafe fn input_wtext_to_string(text: *const WideChar, len: usize) -> String {
+    if (len as isize) < 0 {
+        let mut dst = Vec::new();
+        let mut itr = text;
+        {
+            while *itr != 0 {
+                dst.push(*itr);
+                itr = itr.offset(1);
+            }
+        }
+        return from_widechar_vec_lossy(dst);
+    }
+
+    let mut dst = Vec::with_capacity(len);
+    dst.set_len(len);
+    std::ptr::copy_nonoverlapping(text, dst.as_mut_ptr(), len);
+    from_widechar_vec_lossy(dst)
+}

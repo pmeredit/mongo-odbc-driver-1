@@ -1,9 +1,6 @@
 use crate::{
     api::{
-        data::{
-            i16_len, i32_len, input_text_to_string, input_wtext_to_string, set_str_length,
-            unsupported_function,
-        },
+        data::{i16_len, i32_len, input_text_to_string, set_str_length, unsupported_function},
         definitions::*,
         diag::{get_diag_field, get_diag_rec, get_diag_recw, get_stmt_diag_field},
         errors::{ODBCError, Result},
@@ -28,7 +25,7 @@ use odbc_sys::{
     Len, Nullability, Pointer, RetCode, SmallInt, SqlReturn, ULen, USmallInt,
 };
 use std::{collections::HashMap, mem::size_of, panic, sync::mpsc};
-use widechar::WideChar;
+use widechar::{input_wtext_to_string, WideChar};
 
 const NULL_HANDLE_ERROR: &str = "handle cannot be null";
 const HANDLE_MUST_BE_ENV_ERROR: &str = "handle must be env";

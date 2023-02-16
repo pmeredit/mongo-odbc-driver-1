@@ -1,11 +1,10 @@
 use crate::{
-    api::data::input_wtext_to_string,
     definitions::*,
     handles::definitions::{Connection, ConnectionState, MongoHandle},
     SQLGetInfoW,
 };
 use odbc_sys::{Pointer, SmallInt, SqlReturn, UInteger, USmallInt};
-use widechar::WideChar;
+use widechar::{input_wtext_to_string, WideChar};
 
 macro_rules! test_get_info {
     ($func_name:ident,

@@ -5,15 +5,14 @@
 */
 
 //#[cfg(target_os = "windows")]
-use widechar::to_widechar_vec;
 use windows::{
-    core::{w, PCSTR, PCWSTR},
+    core::w,
     Win32::{
         Foundation::{HINSTANCE, HWND},
         System::SystemServices::{
             DLL_PROCESS_ATTACH, DLL_PROCESS_DETACH, DLL_THREAD_ATTACH, DLL_THREAD_DETACH,
         },
-        UI::WindowsAndMessaging::{MessageBoxA, MessageBoxW, MB_OK},
+        UI::WindowsAndMessaging::{MessageBoxW, MB_OK},
     },
 };
 
@@ -22,12 +21,12 @@ extern crate native_windows_gui as nwg;
 
 use nwd::NwgUi;
 use nwg::NativeUi;
-use winreg::{RegKey, enums::HKEY_LOCAL_MACHINE};
+use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
 
 #[derive(Default, NwgUi)]
 pub struct SetupGUI {
     #[nwg_resource(source_file: Some("./Banner.bmp"))]
-     banner: nwg::Bitmap,
+    banner: nwg::Bitmap,
     #[nwg_control(size: (600, 450), position: (500, 500), title: "AtlasSQL ODBC Driver Source Configuration", flags: "WINDOW|VISIBLE")]
     #[nwg_events( OnWindowClose: [SetupGUI::close] )]
     window: nwg::Window,
@@ -42,7 +41,7 @@ pub struct SetupGUI {
     #[nwg_control(flags: "VISIBLE", text: "DS Name")]
     #[nwg_layout_item(layout: grid, row: 2, col: 1, col_span: 1)]
     dsn_field: nwg::Label,
-    
+
     #[nwg_control(flags: "VISIBLE", text: "", focus: true)]
     #[nwg_layout_item(layout: grid, row: 2, col: 2, col_span: 5)]
     dsn_input: nwg::TextBox,
@@ -50,15 +49,15 @@ pub struct SetupGUI {
     #[nwg_control(flags: "VISIBLE", text: "User")]
     #[nwg_layout_item(layout: grid,  row: 3, col: 1, col_span: 1)]
     user_field: nwg::Label,
-    
+
     #[nwg_control(flags: "VISIBLE", text: "")]
     #[nwg_layout_item(layout: grid,  row: 3, col: 2, col_span: 5)]
     user_input: nwg::TextBox,
-    
+
     #[nwg_control(flags: "VISIBLE", text: "Password")]
     #[nwg_layout_item(layout: grid,  row: 4, col: 1, col_span: 1)]
     password_field: nwg::Label,
-    
+
     #[nwg_control(flags: "VISIBLE", text: "")]
     #[nwg_layout_item(layout: grid,  row: 4, col: 2, col_span: 5)]
     password_input: nwg::TextBox,
@@ -80,7 +79,7 @@ pub struct SetupGUI {
     #[nwg_control(flags: "VISIBLE", text: "Server")]
     #[nwg_layout_item(layout: grid,  row: 8, col: 1, col_span: 1)]
     server_field: nwg::Label,
-    
+
     #[nwg_control(flags: "VISIBLE", text: "")]
     #[nwg_layout_item(layout: grid,  row: 8, col: 2, col_span: 5)]
     server_input: nwg::TextBox,
@@ -88,7 +87,7 @@ pub struct SetupGUI {
     #[nwg_control(flags: "VISIBLE", text: "Database")]
     #[nwg_layout_item(layout: grid,  row: 9, col: 1, col_span: 1)]
     database_field: nwg::Label,
-    
+
     #[nwg_control(flags: "VISIBLE", text: "")]
     #[nwg_layout_item(layout: grid,  row: 9, col: 2, col_span: 5)]
     database_input: nwg::TextBox,
@@ -117,11 +116,13 @@ pub struct SetupGUI {
 
 impl SetupGUI {
     fn choose_uri(&self) {
-        self.radio_props.set_check_state(nwg::RadioButtonState::Unchecked);
+        self.radio_props
+            .set_check_state(nwg::RadioButtonState::Unchecked);
     }
 
     fn choose_props(&self) {
-        self.radio_uri.set_check_state(nwg::RadioButtonState::Unchecked);
+        self.radio_uri
+            .set_check_state(nwg::RadioButtonState::Unchecked);
     }
 
     fn close(&self) {
@@ -129,30 +130,36 @@ impl SetupGUI {
     }
 
     fn set_keys(&self) {
-        unsafe {
-            // TODO: Support user DSNs
-            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-            let (settings, disp) = hklm.create_subkey("Software\\ODBC\\ODBC.INI\\".to_string() + &self.dsn_input.text()).unwrap();
-            match self.radio_uri.check_state() {
-                nwg::RadioButtonState::Checked => {
-                    settings.set_value("URI", &self.uri_input.text()).unwrap();
-                }
-                nwg::RadioButtonState::Unchecked => {
-                    settings.set_value("SERVER", &self.server_input.text()).unwrap();
-                    settings.set_value("DATABASE", &self.database_input.text()).unwrap();
-                }
-            }       
-            settings.set_value("USER", &self.user_input.text()).unwrap();
-            settings.set_value("PASSWORD", &self.password_input.text()).unwrap();
-            self.close();
+        // TODO: Support user DSNs
+        let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+        let (settings, _disp) = hklm
+            .create_subkey("Software\\ODBC\\ODBC.INI\\".to_string() + &self.dsn_input.text())
+            .unwrap();
+        match self.radio_uri.check_state() {
+            nwg::RadioButtonState::Checked => {
+                settings.set_value("URI", &self.uri_input.text()).unwrap();
+            }
+            nwg::RadioButtonState::Unchecked => {
+                settings
+                    .set_value("SERVER", &self.server_input.text())
+                    .unwrap();
+                settings
+                    .set_value("DATABASE", &self.database_input.text())
+                    .unwrap();
+            }
         }
+        settings.set_value("USER", &self.user_input.text()).unwrap();
+        settings
+            .set_value("PASSWORD", &self.password_input.text())
+            .unwrap();
+        self.close();
     }
 }
 
 fn init_gui(driver: String) {
     nwg::init().expect("Failed to init Native Windows GUI");
     nwg::Font::set_global_family("Segoe UI").expect("Failed to set default font");
-    let mut app = SetupGUI::build_ui(Default::default()).expect("Failed to build UI");
+    let app = SetupGUI::build_ui(Default::default()).expect("Failed to build UI");
     app.driver.set_visible(false);
     app.driver.set_text(&driver);
     nwg::dispatch_thread_events();
@@ -160,51 +167,51 @@ fn init_gui(driver: String) {
 
 //#[cfg(target_os = "windows")]
 #[no_mangle]
-pub extern "system" fn DllMain(_: HINSTANCE, reason_for_call: u32, _: usize) -> i32 {
-    unsafe {
-        match reason_for_call {
-            DLL_PROCESS_ATTACH => {
-                //MessageBoxW(None, w!("ATTACH1"), w!("ATTACH2"), MB_OK);
-            }
-            DLL_PROCESS_DETACH => {
-                //MessageBoxW(None, w!("DETACH1"), w!("DETACH2"), MB_OK);
-            }
-            DLL_THREAD_ATTACH => {
-                //MessageBoxW(None, w!("TA1"), w!("TA2"), MB_OK);
-            }
-            DLL_THREAD_DETACH => {
-                //MessageBoxW(None, w!("TD1"), w!("TD2"), MB_OK);
-            }
-            _ => {
-                //MessageBoxW(None, w!("U"), w!("U"), MB_OK);
-            }
-        }
-    }
+pub extern "system" fn DllMain(_: HINSTANCE, _reason_for_call: u32, _: usize) -> i32 {
+//    unsafe {
+//        match reason_for_call {
+//            DLL_PROCESS_ATTACH => {
+//                MessageBoxW(None, w!("ATTACH1"), w!("ATTACH2"), MB_OK);
+//            }
+//            DLL_PROCESS_DETACH => {
+//                MessageBoxW(None, w!("DETACH1"), w!("DETACH2"), MB_OK);
+//            }
+//            DLL_THREAD_ATTACH => {
+//                MessageBoxW(None, w!("TA1"), w!("TA2"), MB_OK);
+//            }
+//            DLL_THREAD_DETACH => {
+//                MessageBoxW(None, w!("TD1"), w!("TD2"), MB_OK);
+//            }
+//            _ => {
+//                MessageBoxW(None, w!("U"), w!("U"), MB_OK);
+//            }
+//        }
+//    }
     1
 }
 
 #[no_mangle]
 pub extern "system" fn ConfigDSNW(
     _: HWND,
-    request: u32,
-    driver: PCWSTR,
-    attributes: PCWSTR,
+    _request: u32,
+    driver: *mut widechar::WideChar,
+    _attributes: *mut widechar::WideChar,
 ) -> bool {
-    init_gui(unsafe{ driver.to_string().unwrap() });
+    init_gui(unsafe { widechar::input_wtext_to_string(driver, 0) });
     true
 }
 
-#[no_mangle]
-pub extern "system" fn Driver_Prompt(
-    _: HWND,
-    _: *const u16,
-    _: u16,
-    _: *mut u16,
-    _: u16,
-    _: *mut u16,
-) -> bool {
-    unsafe {
-        MessageBoxW(None, w!("DRIVER PROMPT"), w!("DRIVER PROMPT"), MB_OK);
-    }
-    true
-}
+//#[no_mangle]
+//pub extern "system" fn Driver_Prompt(
+//    _: HWND,
+//    _: *const u16,
+//    _: u16,
+//    _: *mut u16,
+//    _: u16,
+//    _: *mut u16,
+//) -> bool {
+//    unsafe {
+//        MessageBoxW(None, w!("DRIVER PROMPT"), w!("DRIVER PROMPT"), MB_OK);
+//    }
+//    true
+//}

@@ -954,34 +954,6 @@ pub unsafe fn input_text_to_string(text: *const Char, len: usize) -> String {
 }
 
 ///
-/// input_wtext_to_string converts an input cstring to a rust String.
-/// It assumes nul termination if the supplied length is negative.
-///
-/// # Safety
-/// This converts raw C-pointers to rust Strings, which requires unsafe operations
-///
-#[allow(clippy::uninit_vec)]
-pub unsafe fn input_wtext_to_string(text: *const WideChar, len: usize) -> String {
-    use widechar::from_widechar_vec_lossy;
-    if (len as isize) < 0 {
-        let mut dst = Vec::new();
-        let mut itr = text;
-        {
-            while *itr != 0 {
-                dst.push(*itr);
-                itr = itr.offset(1);
-            }
-        }
-        return from_widechar_vec_lossy(dst);
-    }
-
-    let mut dst = Vec::with_capacity(len);
-    dst.set_len(len);
-    copy_nonoverlapping(text, dst.as_mut_ptr(), len);
-    from_widechar_vec_lossy(dst)
-}
-
-///
 /// set_output_wstring_helper writes [`message`] to the *WideChar [`output_ptr`]. [`buffer_len`] is the
 /// length of the [`output_ptr`] buffer in characters; the message should be truncated
 /// if it is longer than the buffer length.

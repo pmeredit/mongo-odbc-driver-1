@@ -397,9 +397,8 @@ mod unit {
 
     #[test]
     fn sql_get_wstring_data() {
-        use crate::api::{
-            data::input_wtext_to_string, definitions::CDataType, functions::SQLGetData,
-        };
+        use crate::api::{definitions::CDataType, functions::SQLGetData};
+        use widechar::input_wtext_to_string;
 
         let env = Box::into_raw(Box::new(MongoHandle::Env(Env::with_state(
             EnvState::ConnectionAllocated,
@@ -496,11 +495,9 @@ mod unit {
 
     #[test]
     fn sql_get_wstring_data_by_pieces() {
-        use crate::api::{
-            data::input_wtext_to_string, definitions::CDataType, functions::SQLGetData,
-        };
+        use crate::api::{definitions::CDataType, functions::SQLGetData};
         use std::mem::size_of;
-        use widechar::WideChar;
+        use widechar::{input_wtext_to_string, WideChar};
 
         let env = Box::into_raw(Box::new(MongoHandle::Env(Env::with_state(
             EnvState::ConnectionAllocated,

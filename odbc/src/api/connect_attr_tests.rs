@@ -1,6 +1,6 @@
 mod unit {
     use crate::{
-        api::{data::input_wtext_to_string, definitions::ConnectionAttribute},
+        api::definitions::ConnectionAttribute,
         errors::ODBCError,
         handles::definitions::{Connection, ConnectionAttributes, ConnectionState, MongoHandle},
         util::connection_attribute_to_string,
@@ -8,6 +8,7 @@ mod unit {
     };
     use odbc_sys::{Integer, Pointer, SqlReturn, UInteger};
     use std::sync::RwLock;
+    use widechar::input_wtext_to_string;
 
     mod get {
         use std::mem::size_of;
