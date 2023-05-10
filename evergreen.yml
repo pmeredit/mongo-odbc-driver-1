@@ -444,6 +444,7 @@ functions:
       params:
         build_variants:
           - macos
+          - macos-arm
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
         local_file: mongosql-odbc-driver/target/release/libatsql.dylib
@@ -455,6 +456,7 @@ functions:
       params:
         build_variants:
           - macos
+          - macos-arm
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
         local_file: mongosql-odbc-driver/installer/dmg/mongoodbc.dmg
@@ -1634,16 +1636,6 @@ buildvariants:
   - name: macos
     display_name: "macOS 11.0"
     run_on: [macos-1100]
-    tasks:
-      - name: compile-macos
-      - name: compile-debug-macos
-      - name: macos-unit-test
-      - name: macos-integration-test
-      - name: macos-result-set-test
-
-  - name: macos-arm
-    display_name: "macOS 11.0 ARM 64"
-    run_on: [macos-1100-arm64]
     tasks:
       - name: compile-macos
       - name: compile-debug-macos
