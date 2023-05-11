@@ -122,8 +122,7 @@ fn main() {
             "Description",
             format!("MongoDB Atlas SQL ODBC Driver {latest}"),
         )
-        .set("Driver", mdb_driver_path)
-        .set("DriverUnicodeType", "utf16");
+        .set("Driver", mdb_driver_path);
 
     info(&format!("Writing ini_file: {ini_file}"));
     write_odbc_file(&ini_file, ini)
