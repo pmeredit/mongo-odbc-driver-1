@@ -1037,6 +1037,12 @@ pub unsafe extern "C" fn SQLExecDirectW(
         || {
             let query = input_text_to_string_w(statement_text, text_length as usize);
             let mongo_handle = MongoHandleRef::from(statement_handle);
+            trace_odbc!(
+                info,
+                mongo_handle,
+                format!("Executing following query: \"{query}\""),
+                function_name!()
+            );
             let stmt = must_be_valid!(mongo_handle.as_statement());
             let mongo_statement = {
                 let connection = must_be_valid!((*stmt.connection).as_connection());
@@ -3444,5 +3450,36 @@ pub unsafe extern "C" fn SQLTablesW(
             SqlReturn::SUCCESS
         },
         statement_handle
+    );
+}
+
+///
+/// [`SQLGetFunctions`]: https://learn.microsoft.com/en-us/sql/odbc/reference/syntax/SQLTables-function
+///
+/// This is the WideChar version of the SQLTables function
+///
+/// # Safety
+/// Because this is a C-interface, this is necessarily unsafe
+///
+#[no_mangle]
+#[named]
+pub unsafe extern "C" fn SQLGetFunctions(
+    conn_handle: HDbc,
+    function_id: USmallInt,
+    supported_ptr: *mut USmallInt,
+) -> SqlReturn {
+    panic_safe_exec_clear_diagnostics!(
+        debug,
+        || {
+            let mongo_handle = MongoHandleRef::from(conn_handle);
+            trace_odbc!(
+                info,
+                mongo_handle,
+                format!("Checking function_id: \"{function_id}\""),
+                function_name!()
+            );
+            SqlReturn::ERROR
+        },
+        conn_handle
     );
 }
