@@ -1522,6 +1522,12 @@ unsafe fn sql_get_data_helper(
         add_diag_with_function!(mongo_handle, e, "SQLGetData");
         return SqlReturn::ERROR;
     }
+    trace_odbc!(
+        info,
+        mongo_handle,
+        format!("Getting bson data [{col_or_param_num}] = {ret}"),
+        "SQLGetData"
+    );
     crate::api::data::format_bson_data(
         mongo_handle,
         col_or_param_num,
@@ -1825,14 +1831,14 @@ macro_rules! sql_get_info_helper {
 
     let conn_handle = MongoHandleRef::from(connection_handle);
     let mut err = None;
-    trace_odbc!(
-        info,
-        conn_handle,
-        format!("InfoType {info_type}"),
-        $func_name
-    );
     let sql_return = match FromPrimitive::from_u16(info_type) {
         Some(some_info_type) => {
+            trace_odbc!(
+                info,
+                conn_handle,
+                format!("InfoType {some_info_type:?}"),
+                $func_name
+            );
             match some_info_type {
                 InfoType::SQL_DRIVER_NAME => {
                     // This Driver Name is consistent with the name used for our JDBC driver.
@@ -2039,7 +2045,7 @@ macro_rules! sql_get_info_helper {
                 | InfoType::SQL_CONVERT_LONGVARBINARY
                 | InfoType::SQL_CONVERT_GUID => {
                     // MongoSQL does not support CONVERT.
-                    i16_len::set_output_fixed_data(&SQL_U32_ZERO, info_value_ptr, string_length_ptr)
+                    i16_len::set_output_fixed_data(&SQL_U32_ALL, info_value_ptr, string_length_ptr)
                 }
                 InfoType::SQL_GETDATA_EXTENSIONS => {
                     // GetData can be called on any column in any order.
