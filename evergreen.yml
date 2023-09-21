@@ -1612,9 +1612,9 @@ buildvariants:
       - name: integration-test
       - name: result-set-test
 
-  - name: macos
-    display_name: "macOS 12.0"
-    run_on: [macos-1200]
+  - name: macos13
+    display_name: "macOS 13.0 ARM"
+    run_on: [macos-1300-arm64]
     tasks:
       - name: compile
       - name: compile-debug
