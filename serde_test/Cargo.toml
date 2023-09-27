@@ -1,0 +1,12 @@
+[package]
+name = "serde_test"
+version = "0.1.0"
+authors = ["Patrick Meredith <pmeredit@protonmail.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+mongo-odbc-core = { path = "../core" }
+serde = { version = "1", features = ["derive"] }
+bson = "2"

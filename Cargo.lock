@@ -924,6 +924,7 @@ dependencies = [
  "itertools",
  "lazy_static",
  "likely_stable",
+ "linked-hash-map",
  "log",
  "mongodb",
  "num-derive",
@@ -931,6 +932,7 @@ dependencies = [
  "odbc-sys",
  "regex",
  "serde",
+ "serde-tuple-vec-map",
  "shared_sql_utils",
  "thiserror",
  "windows 0.44.0",
@@ -1504,6 +1506,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-tuple-vec-map"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a04d0ebe0de77d7d445bb729a895dcb0a288854b267ca85f030ce51cdc578c82"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde-value"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1551,6 +1562,15 @@ version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96426c9936fd7a0124915f9185ea1d20aa9445cc9821142f0a73bc9207a2e186"
 dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "serde_test"
+version = "0.1.0"
+dependencies = [
+ "bson",
+ "mongo-odbc-core",
  "serde",
 ]
 

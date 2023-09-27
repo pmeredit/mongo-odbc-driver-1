@@ -1,14 +1,13 @@
 use crate::{BsonTypeInfo, Error};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Schema {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bson_type: Option<BsonType>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub properties: Option<HashMap<String, Schema>>,
+    #[serde(with = "tuple_vec_map", skip_serializing_if = "Vec::is_empty", default)]
+    pub properties: Vec<(String, Schema)>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub required: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -18,6 +17,7 @@ pub struct Schema {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub any_of: Option<Vec<Schema>>,
 }
+
 
 impl Schema {
     // Remove multiple recursively removes Multiple Bson Type entries.
@@ -29,13 +29,13 @@ impl Schema {
                 "Schema with bsonType and anyOf both defined is invalid",
             ));
         }
-        if let Some(props) = self.properties {
-            self.properties = Some(
-                props
+        if !self.properties.is_empty() {
+            self.properties = 
+                self.properties
                     .into_iter()
                     .map(|(k, x)| Ok((k, x.remove_multiple()?)))
-                    .collect::<Result<_, Error>>()?,
-            );
+                    .collect::<Result<_, Error>>()?
+            ;
         }
         if let Some(items) = self.items {
             match items {
@@ -51,7 +51,7 @@ impl Schema {
                 Items::Multiple(_) => {
                     self.items = Some(Items::Single(Box::new(Schema {
                         bson_type: Some(BsonType::Single(BsonTypeName::Any)),
-                        properties: None,
+                        properties: vec![],
                         required: None,
                         additional_properties: None,
                         items: None,
@@ -92,7 +92,7 @@ impl Schema {
                         BsonTypeName::Array => {
                             Schema {
                                 bson_type: Some(BsonType::Single(*x)),
-                                properties: None,
+                                properties: vec![],
                                 required: None,
                                 additional_properties: None,
                                 items: self.items.clone(),
@@ -103,7 +103,7 @@ impl Schema {
                         _ => {
                             Schema {
                                 bson_type: Some(BsonType::Single(*x)),
-                                properties: None,
+                                properties: vec![],
                                 required: None,
                                 additional_properties: None,
                                 items: None,
@@ -114,7 +114,7 @@ impl Schema {
                     .collect(),
             );
             self.bson_type = None;
-            self.properties = None;
+            self.properties = vec![];
             self.required = None;
             self.additional_properties = None;
             self.items = None;
@@ -261,12 +261,12 @@ pub mod simplified {
             match schema {
                 json_schema::Schema {
                     bson_type: None,
-                    properties: None,
+                    properties,
                     required: None,
                     additional_properties: None | Some(false),
                     items: None,
                     any_of: None,
-                } => Ok(Atomic::Scalar(BsonTypeName::Any)),
+                } if properties.is_empty() => Ok(Atomic::Scalar(BsonTypeName::Any)),
                 json_schema::Schema {
                     bson_type: Some(bson_type),
                     properties,
@@ -286,7 +286,6 @@ pub mod simplified {
                     }
                     BsonType::Single(BsonTypeName::Object) => Ok(Atomic::Object(ObjectSchema {
                         properties: properties
-                            .unwrap_or_default()
                             .into_iter()
                             .map(|(prop, prop_schema)| Ok((prop, Schema::try_from(prop_schema)?)))
                             .collect::<Result<_>>()?,
