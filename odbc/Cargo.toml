@@ -28,7 +28,7 @@ logger = { path = "../logger" }
 log = "0.4.17"
 
 [dependencies.mongodb]
-version = "2.7"
+path = "../../mongo-rust-driver"
 default-features = false
 features = ["tokio-sync"]
 
