@@ -30,7 +30,7 @@ log = "0.4.17"
 [dependencies.mongodb]
 path = "../../mongo-rust-driver"
 default-features = false
-features = ["tokio-sync"]
+features = ["tokio-sync", "aws-auth"]
 
 [dependencies.bson]
 version = "2.0.1"

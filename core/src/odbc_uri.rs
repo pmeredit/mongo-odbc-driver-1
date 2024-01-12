@@ -58,6 +58,10 @@ lazy_static! {
         .case_insensitive(true)
         .build()
         .unwrap();
+    static ref AUTH_MECH_REGEX: Regex = RegexBuilder::new(r#"[&?]authMechanism=(?P<mech>[^&]*)"#)
+        .case_insensitive(true)
+        .build()
+        .unwrap();
 }
 
 #[derive(Debug)]
@@ -280,12 +284,19 @@ impl ODBCUri {
 
     fn handle_uri(&mut self, uri: &str) -> Result<UserOptions> {
         let server = self.remove(SERVER_KWS);
+        let auth_mechanism = AUTH_MECH_REGEX
+            .captures(uri)
+            .and_then(|cap| cap.name("mech").map(|x| x.as_str()));
+
         let source = AUTH_SOURCE_REGEX
             .captures(uri)
             .and_then(|cap| cap.name("source").map(|s| s.as_str()));
         let mut client_options = ClientOptions::parse(uri).map_err(Error::InvalidClientOptions)?;
-
-        if client_options.credential.is_some() {
+        
+        if auth_mechanism.is_some() && auth_mechanism.unwrap() == "MONGODB-OIDC" {
+            dbg!();
+            client_options.credential = None;
+        } else if client_options.credential.is_some() {
             // user name set as attribute should supercede mongo uri
             let user = self.remove(USER_KWS);
             if user.is_some() {
@@ -297,6 +308,7 @@ impl ODBCUri {
                 client_options.credential.as_mut().unwrap().password = pwd.map(String::from);
             }
             Self::check_client_opts_credentials(&client_options)?;
+        // if the auth_mechanism is MONGODB-OIDC there should be no credentials
         } else {
             // if the credentials were not set in the mongo uri, then user and pwd are _required_ to be
             // set as attributes.
@@ -1036,5 +1048,20 @@ mod unit {
                 uri_opts.client_options.driver_info.unwrap().name
             );
         }
+    }
+
+    #[test]
+    fn mongodb_oidc_should_ignore_user_name_and_pwd() {
+            use crate::odbc_uri::ODBCUri;
+            use constants::DRIVER_SHORT_NAME;
+            let uri_opts = ODBCUri::new("USER=foo;URI=mongodb://localhost:27017/test?authMechanism=MONGODB-OIDC&authMechanismProperties=ISSUER_DOMAIN:https://dev-bzkxrnbykc6fb01i.us.auth0.com,CLIENT_ID:80OQwYGwA5JkCFnnQIdcITg3zlOjWfTO,CLIENT_SECRET:-hynidlScgOCoq0FAHreppw-jPRWUzXQ0y9NRJYckF5G6sMfOjZA5B8uvzCenXm0".to_string())
+                .unwrap()
+                .try_into_client_options()
+                .unwrap();
+
+            assert_eq!(
+                None,
+                uri_opts.client_options.credential
+            );
     }
 }
