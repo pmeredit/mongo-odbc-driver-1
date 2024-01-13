@@ -932,6 +932,16 @@ pub unsafe extern "C" fn SQLDriverConnectW(
     string_length_2: *mut SmallInt,
     driver_completion: DriverConnectOption,
 ) -> SqlReturn {
+    dbg!(
+    format!("{:?}", connection_handle).to_uppercase(),
+    &_window_handle,
+    &in_connection_string,
+    &string_length_1,
+    &out_connection_string,
+    &buffer_length,
+    &string_length_2,
+    &driver_completion,
+    );
     panic_safe_exec_clear_diagnostics!(
         debug,
         || {
@@ -956,14 +966,16 @@ pub unsafe extern "C" fn SQLDriverConnectW(
             let mongo_connection =
                 odbc_unwrap!(sql_driver_connect(conn, &odbc_uri_string), conn_handle);
             *conn.mongo_connection.write().unwrap() = Some(mongo_connection);
-            let buffer_len = usize::try_from(buffer_length).unwrap();
             // We know the mysql ODBC driver returns SUCCESS if the out_connection_string is NULL.
             // We can also just return SUCCESS if the buffer_len is 0. Likely, users are not
             // expecting to get back a warning when they pass an empty buffer to this, especially
             // given that we only currently support DriverConnectOption::NoPrompt.
-            if buffer_len == 0 || out_connection_string.is_null() {
+            if buffer_length <= 0 || out_connection_string.is_null() {
+                dbg!(buffer_length, out_connection_string.is_null());
+                *string_length_2 = odbc_uri_string.len() as SmallInt;
                 return SqlReturn::SUCCESS;
             }
+            let buffer_len = usize::try_from(buffer_length).unwrap();
             let sql_return = i16_len::set_output_wstring(
                 &odbc_uri_string,
                 out_connection_string,
