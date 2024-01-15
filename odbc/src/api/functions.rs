@@ -933,14 +933,15 @@ pub unsafe extern "C" fn SQLDriverConnectW(
     driver_completion: DriverConnectOption,
 ) -> SqlReturn {
     dbg!(
-    format!("{:?}", connection_handle).to_uppercase(),
-    &_window_handle,
-    &in_connection_string,
-    &string_length_1,
-    &out_connection_string,
-    &buffer_length,
-    &string_length_2,
-    &driver_completion,
+        "111111111111111111111111",
+        format!("{:?}", connection_handle).to_uppercase(),
+        &_window_handle,
+        &in_connection_string,
+        &string_length_1,
+        &out_connection_string,
+        &buffer_length,
+        &string_length_2,
+        &driver_completion,
     );
     panic_safe_exec_clear_diagnostics!(
         debug,
