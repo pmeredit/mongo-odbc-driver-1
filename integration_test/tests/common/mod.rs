@@ -195,15 +195,12 @@ pub fn connect_with_conn_string(env_handle: HEnv, in_connection_string: String) 
             SqlReturn::SUCCESS => (),
             // TODO SQL-1568: Windows DM is still changing SUCCESS to SUCCESS_WITH_INFO
             SqlReturn::SUCCESS_WITH_INFO => {
-                dbg!("!!");
-                dbg!(&in_connection_string, in_connection_string.len());
-                dbg!(*str_len_ptr);
-                if !cfg!(windows) {
-                    return Err(Error::DriverConnect(
-                        sql_return_to_string(SqlReturn::SUCCESS_WITH_INFO),
-                        get_sql_diagnostics(HandleType::Dbc, dbc),
-                    ));
-                }
+                //if !cfg!(windows) {
+                return Err(Error::DriverConnect(
+                    sql_return_to_string(SqlReturn::SUCCESS_WITH_INFO),
+                    get_sql_diagnostics(HandleType::Dbc, dbc),
+                ));
+                //}
             }
             sql_return => {
                 return Err(Error::DriverConnect(
