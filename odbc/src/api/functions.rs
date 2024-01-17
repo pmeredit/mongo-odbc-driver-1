@@ -3116,6 +3116,8 @@ unsafe fn sql_set_env_attrw_helper(
         EnvironmentAttribute::SQL_ATTR_ODBC_VERSION => {
             match FromPrimitive::from_i32(value_ptr as i32) {
                 Some(version) => {
+                    dbg!(value_ptr,
+                        version);
                     env.attributes.write().unwrap().odbc_ver = version;
                     SqlReturn::SUCCESS
                 }
