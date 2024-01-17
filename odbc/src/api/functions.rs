@@ -237,7 +237,10 @@ pub unsafe extern "C" fn SQLAllocHandle(
     input_handle: Handle,
     output_handle: *mut Handle,
 ) -> SqlReturn {
-    dbg!(function_name!());
+    dbg!(function_name!(),
+        input_handle,
+        output_handle,
+    );
     panic_safe_exec_keep_diagnostics!(
         info,
         || {
@@ -287,6 +290,7 @@ fn sql_alloc_handle(
             let mh_ptr = Box::into_raw(mh);
             env.connections.write().unwrap().insert(mh_ptr);
             *(env.state.write().unwrap()) = EnvState::ConnectionAllocated;
+            dbg!(mh_ptr);
             unsafe { *output_handle = mh_ptr as *mut _ }
             Ok(())
         }
@@ -951,17 +955,10 @@ pub unsafe extern "C" fn SQLDriverConnectW(
     string_length_2: *mut SmallInt,
     driver_completion: DriverConnectOption,
 ) -> SqlReturn {
-    dbg!(function_name!());
-    dbg!(
-        "111111111111111111111111",
+    dbg!(function_name!(),
         format!("{:?}", connection_handle).to_uppercase(),
-        &_window_handle,
         &in_connection_string,
-        &string_length_1,
         &out_connection_string,
-        &buffer_length,
-        &string_length_2,
-        &driver_completion,
     );
     panic_safe_exec_clear_diagnostics!(
         debug,
@@ -1838,6 +1835,10 @@ unsafe fn sql_get_env_attrw_helper(
         ptr_safe_write(string_length, size_of::<Integer>() as Integer);
         match attribute {
             EnvironmentAttribute::SQL_ATTR_ODBC_VERSION => {
+                dbg!(value_ptr);
+                // 0 out the ODBC_VERSION to account for issues with repr(i32) for the OdbcVersion
+                // enum.
+                *(value_ptr as *mut Integer) = 0x00000000;
                 *(value_ptr as *mut OdbcVersion) = env.attributes.read().unwrap().odbc_ver;
             }
             EnvironmentAttribute::SQL_ATTR_OUTPUT_NTS => {
