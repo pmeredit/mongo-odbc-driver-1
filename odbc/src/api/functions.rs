@@ -1789,7 +1789,7 @@ unsafe fn sql_get_env_attrw_helper(
             EnvironmentAttribute::SQL_ATTR_ODBC_VERSION => {
                 // 0 out the ODBC_VERSION to account for issues with repr(i32) for the OdbcVersion
                 // enum.
-                *(value_ptr as *mut Integer) = 0x00000000;
+                //*(value_ptr as *mut Integer) = 0x00000000;
                 *(value_ptr as *mut OdbcVersion) = env.attributes.read().unwrap().odbc_ver;
             }
             EnvironmentAttribute::SQL_ATTR_OUTPUT_NTS => {
